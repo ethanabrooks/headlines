@@ -26,7 +26,7 @@ parser.add_argument('--num_instances', type=int, default=100000,
 parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
 parser.add_argument('--memory_size', type=int, default=40, help='Memory size')
 parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding size')
-parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
+parser.add_argument('--n_memory_slots', type=int, default=20, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
 parser.add_argument('--batch_size', type=int, default=64,
@@ -65,6 +65,8 @@ assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
 
 def get_bucket_idx(length):
+    print(length)
+    print(s.bucket_factor)
     return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
 
 
@@ -84,7 +86,6 @@ class Dataset:
 
     def fill_buckets(self):
         lengths = map(len, self.instances)
-        print(lengths)
         assert lengths[0] == lengths[1]
         for article, title in zip(*self.instances):
             bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
