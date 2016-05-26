@@ -288,15 +288,13 @@ if __name__ == '__main__':
     data = Data()
     data.print_data_stats()
 
-    print(data.nclasses)
-    print(data.vocsize)
-    # rnn = Model(s.hidden_size,
-    #             data.nclasses,
-    #             data.vocsize,  # num_embeddings
-    #             s.embedding_dim,  # embedding_dim
-    #             1,
-    #             s.memory_size,
-    #             s.n_memory_slots)
+    rnn = Model(s.hidden_size,
+                data.nclasses,
+                data.vocsize,  # num_embeddings
+                s.embedding_dim,  # embedding_dim
+                1,
+                s.memory_size,
+                s.n_memory_slots)
 
     scores = {dataset_name: defaultdict(list)
               for dataset_name in Datasets._fields}
@@ -310,11 +308,6 @@ if __name__ == '__main__':
             loss = None
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
-                    with open('articles.pkl', 'w') as handle:
-                        pickle.dump(articles, handle)
-                    with open('titles.pkl', 'w') as handle:
-                        pickle.dump(titles, handle)
-                    exit(0)
                     if name == 'train':
                         bucket_predictions, new_loss = rnn.train(articles,
                                                                  titles)
