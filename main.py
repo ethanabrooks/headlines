@@ -40,6 +40,8 @@ parser.add_argument('--dataset', type=str, default='jeopardy',
                     help='select dataset [atis|Jeopardy]')
 parser.add_argument('--plots', type=str, default='plots',
                     help='file for saving Bokeh plots output')
+parser.add_argument('--data_dir', type=str, default='.',
+                    help='path to data')
 parser.add_argument('--bucket_factor', type=int, default=2,
                     help='factor by which to multiply exponent when determining bucket size')
 
@@ -59,7 +61,6 @@ NON_ANSWER_VALUE = 1
 ANSWER_VALUE = 2
 GO = '<go>'
 
-data_dir = "."
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
 
@@ -123,14 +124,14 @@ class Data:
                 data_filename = get_filename('txt')
                 if set_name == 'train':
                     dict_filename = get_filename('dict')
-                    with open(os.path.join(data_dir, dict_filename)) as dict_file:
+                    with open(os.path.join(s.data_dir, dict_filename)) as dict_file:
                         for line in dict_file:
                             word, idx = line.split()
                             idx = int(float(idx))
                             self.vocsize = max(idx, self.vocsize)
                             self.dictionary.__getattribute__(doc_type)[word] = idx
 
-                with open(os.path.join(data_dir, data_filename)) as data_file:
+                with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
                         self.num_instances += 1
                         if set_name == 'train':
