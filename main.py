@@ -84,6 +84,7 @@ class Dataset:
 
     def fill_buckets(self):
         lengths = map(len, self.instances)
+        print(lengths)
         assert lengths[0] == lengths[1]
         for article, title in zip(*self.instances):
             bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
