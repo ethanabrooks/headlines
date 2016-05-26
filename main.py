@@ -110,7 +110,10 @@ class Data:
             if doc_type == 'article':
                 string = GO + ' ' + string
             tokens = string.split()
-            size = s.bucket_factor ** get_bucket_idx(len(tokens))
+            length = len(tokens)
+            if not tokens:
+                length += 1
+            size = s.bucket_factor ** get_bucket_idx(length)
             sentence_vector = np.zeros(size, dtype='int32') + PAD_VALUE
             for i, word in enumerate(tokens):
                 sentence_vector[i] = self.dictionary.__getattribute__(doc_type)[word]
@@ -141,10 +144,7 @@ class Data:
                         array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
 
-            try:
-                dataset.fill_buckets()
-            except ValueError:
-                print(set_name, doc_type)
+            dataset.fill_buckets()
             print('Bucket allocation:')
             delete = []
             print('\nNumber of buckets: ', len(dataset.buckets))
