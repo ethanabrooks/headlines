@@ -90,8 +90,6 @@ class Dataset:
         lengths = map(len, self.instances)
         assert lengths[0] == lengths[1]
         for article, title in zip(*self.instances):
-            print(article.size)
-            print(title.size)
             bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
             self.buckets[bucket_id].append(Instance(article, title))
 
