@@ -26,7 +26,7 @@ parser.add_argument('--num_instances', type=int, default=100000,
 parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
 parser.add_argument('--memory_size', type=int, default=40, help='Memory size')
 parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding size')
-parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
+parser.add_argument('--n_memory_slots', type=int, default=100, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
 parser.add_argument('--batch_size', type=int, default=64,
@@ -40,7 +40,7 @@ parser.add_argument('--dataset', type=str, default='jeopardy',
                     help='select dataset [atis|Jeopardy]')
 parser.add_argument('--plots', type=str, default='plots',
                     help='file for saving Bokeh plots output')
-parser.add_argument('--data_dir', type=str, default='.',
+parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
                     help='path to data')
 parser.add_argument('--bucket_factor', type=int, default=2,
                     help='factor by which to multiply exponent when determining bucket size')
@@ -51,7 +51,8 @@ print('-' * 80)
 
 """ Globals """
 folder = os.path.basename(__file__).split('.')[0]
-if not os.path.exists(folder): os.mkdir(folder)
+if not os.path.exists(folder):
+    os.mkdir(folder)
 
 np.random.seed(s.seed)
 random.seed(s.seed)
@@ -86,6 +87,8 @@ class Dataset:
         lengths = map(len, self.instances)
         assert lengths[0] == lengths[1]
         for article, title in zip(*self.instances):
+            print(article.size)
+            print(title.size)
             bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
             self.buckets[bucket_id].append(Instance(article, title))
 
