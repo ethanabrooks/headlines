@@ -66,10 +66,8 @@ assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
 
 def get_bucket_idx(length):
-    try:
-        return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
-    except ValueError:
-        print('length: ', length)
+    return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
+
 
 
 """ namedtuples """
@@ -143,7 +141,10 @@ class Data:
                         array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
 
-            dataset.fill_buckets()
+            try:
+                dataset.fill_buckets()
+            except ValueError:
+                print(set_name, doc_type)
             print('Bucket allocation:')
             delete = []
             print('\nNumber of buckets: ', len(dataset.buckets))
