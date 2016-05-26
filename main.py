@@ -138,8 +138,6 @@ class Data:
                             self.num_train += 1
                         array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
-                        if self.num_instances >= s.num_instances:
-                            break
 
             dataset.fill_buckets()
             print('Bucket allocation:')
