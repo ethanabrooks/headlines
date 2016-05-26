@@ -68,7 +68,7 @@ assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 def get_bucket_idx(length):
     try:
         return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
-    finally:
+    except ValueError:
         print('length: ', length)
 
 
