@@ -42,7 +42,7 @@ parser.add_argument('--plots', type=str, default='plots',
                     help='file for saving Bokeh plots output')
 parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
                     help='path to data')
-parser.add_argument('--bucket_factor', type=int, default=2,
+parser.add_argument('--bucket_factor', type=int, default=4,
                     help='factor by which to multiply exponent when determining bucket size')
 
 s = parser.parse_args()
@@ -309,7 +309,7 @@ if __name__ == '__main__':
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
                     if name == 'train':
-                        bucket_predictions, new_loss = rnn.train(articles,
+                        bucket_predictions, new_loss = rnn.learn(articles,
                                                                  titles)
                         rnn.normalize()
                         num_instances = articles.shape[0]
@@ -324,7 +324,7 @@ if __name__ == '__main__':
                                        loss,
                                        start_time)
                     else:
-                        bucket_predictions = rnn.predict(articles, titles)
+                        bucket_predictions = rnn.infer(articles, titles)
 
                     predictions.append(bucket_predictions.reshape(titles.shape))
                     targets.append(titles)
