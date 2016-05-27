@@ -207,7 +207,7 @@ class Model(object):
                                             n_steps=articles.shape[1],
                                             name='read_scan')
 
-        produce_title = partial(recurrence, training=True, is_article=False)
+        produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
         outputs_info.extend([self.w_t, self.M_t])
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
@@ -229,7 +229,7 @@ class Model(object):
                                      updates=updates,
                                      allow_input_downcast=True)
 
-        produce_title_test = partial(recurrence, training=False, is_article=False)
+        produce_title_test = partial(recurrence, is_training=False, is_article=False)
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
