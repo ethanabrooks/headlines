@@ -7,7 +7,6 @@ from functools import partial
 import lasagne
 import numpy
 import theano
-from theano.printing import Print
 from theano import tensor as T
 
 int32 = 'int32'
@@ -27,12 +26,12 @@ def cosine_dist(tensor, matrix):
 class Model(object):
     def __init__(self,
                  hidden_size=100,
-                 nclasses=6,
-                 num_embeddings=5,
+                 nclasses=3,
+                 num_embeddings=6860,
                  embedding_dim=100,
-                 window_size=1,
+                 window_size=1,  # TODO: do we want some kind of window?
                  memory_size=40,
-                 n_memory_slots=8,
+                 n_memory_slots=20,
                  go_code=0):
 
         articles, titles = T.imatrices('articles', 'titles')
@@ -77,7 +76,7 @@ class Model(object):
 
         def random_shared(shape):
             return theano.shared(
-                0.2 * numpy.random.uniform(-1.0, 1.0, shape).astype(theano.config.floatX))
+                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX))
 
         def zeros_shared(shape):
             return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
@@ -128,11 +127,11 @@ class Model(object):
                 assert w_t is not None and M_t is not None
 
             word_idxs = i
-            if is_training or is_article:
+            if is_article or is_training:
                 # get representation of word window
                 document = articles if is_article else titles  # [instances, bucket_width]
                 word_idxs = document[:, i]  # [instances, 1]
-            x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
+            x_i = self.emb[word_idxs]  # .flatten(ndim=2)  # [instances, embedding_dim]
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
@@ -157,13 +156,12 @@ class Model(object):
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
 
                 # eqn 12
-                w_hat = T.nnet.softmax(beta * cosine_dist(M, k))  # [instances, mem]
+                w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
 
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
-
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
 
@@ -205,24 +203,28 @@ class Model(object):
         i0 = T.constant(0, dtype=int32)
         outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
 
+        # self.test = theano.function([articles, titles],
+        #                             outputs=read_article(*outputs_info[2:]),
+        #                             on_unused_input='ignore')
+
         [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
                                             outputs_info=outputs_info,
                                             n_steps=articles.shape[1],
                                             name='read_scan')
 
-        produce_title_train = partial(recurrence, is_training=True, is_article=False)
+        produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
         outputs_info.extend([self.w_t, self.M_t])
-        [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_train,
+        [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
                                                       outputs_info=outputs_info,
                                                       n_steps=titles.shape[1],
                                                       name='train_scan')
 
+        # loss and updates
         y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
         y_true = titles.ravel()
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
-
         losses = T.nnet.categorical_crossentropy(y, y_true)
         loss = lasagne.objectives.aggregate(losses, weights, mode='sum')
         updates = lasagne.updates.adadelta(loss, self.params)
@@ -232,30 +234,16 @@ class Model(object):
                                      updates=updates,
                                      allow_input_downcast=True)
 
-        self.test = self.learn
-
-        produce_title = partial(recurrence, is_training=False, is_article=False)
+        produce_title_test = partial(recurrence, is_training=False, is_article=False)
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
-
-        print([x.type for x in outputs_info[2:]])
-
-        self.test = theano.function([articles, titles],
-                                    outputs=produce_title(*outputs_info[2:]),
-                                    on_unused_input='ignore')
-
-        [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
+        [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
                                                       n_steps=titles.shape[1],
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
-
-        self.test = self.infer
-
-        normalized_embeddings = self.emb / T.sqrt((self.emb ** 2).sum(axis=1)).dimshuffle(0, 'x')
-        self.normalize = theano.function(inputs=[],
-                                         updates={self.emb: normalized_embeddings})
+        self.test = self.learn
 
     def save(self, folder):
         for param, name in zip(self.params, self.names):
@@ -263,12 +251,13 @@ class Model(object):
 
 
 if __name__ == '__main__':
-    with open('articles.pkl') as handle:
-        articles = numpy.ones(pickle.load(handle).shape, dtype=int32)
-    with open('titles.pkl') as handle:
-        titles = numpy.ones(pickle.load(handle).shape, dtype=int32)
     rnn = Model()
+    with open('articles.pkl') as handle:
+        articles = pickle.load(handle)
+        print(articles.shape)
+    with open('titles.pkl') as handle:
+        titles = pickle.load(handle)
+        print(titles.shape)
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result.shape)
-    rnn.normalize()
