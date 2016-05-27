@@ -130,7 +130,7 @@ class Data:
                 if set_name == 'train':
                     dict_filename = get_filename('dict')
                     print(dict_filename)
-                    with open(os.path.join(s.data_dir, dict_filename)) as dict_file:
+                    with open(dict_filename) as dict_file:
                         for line in dict_file:
                             word, idx = line.split()
                             idx = int(float(idx))
