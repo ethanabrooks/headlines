@@ -161,7 +161,7 @@ class Data:
                 del (dataset.buckets[key])
 
             dataset.buckets = dataset.buckets.values()
-            self.nclasses = self.vocsize
+            self.nclasses = self.vocsize + 1
 
     def print_data_stats(self):
         print("\nsize of dictionary:", self.vocsize)
