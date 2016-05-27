@@ -212,7 +212,7 @@ class Model(object):
         outputs_info.extend([self.w_t, self.M_t])
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
                                                       outputs_info=outputs_info,
-                                                      n_steps=n_words,
+                                                      n_steps=titles.shape[1],
                                                       name='train_scan')
 
         # loss and updates
@@ -233,7 +233,7 @@ class Model(object):
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
-                                                      n_steps=n_words,
+                                                      n_steps=titles.shape[1],
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
