@@ -18,7 +18,7 @@ for set_name in ["article", "title"]:
             dictionary[float(idx)].append(word)
 
     dict_filename = set_name + '.train.dict.new'
-    with open(os.path.join(s.data_dir, dict_filename), 'w+') as handle:
+    with open(os.path.join(dict_filename), 'w+') as handle:
         for i, word_list in enumerate(special_words + dictionary.values()):
             for word in word_list:
                 handle.write('{} {}\n'.format(word, i))
