@@ -129,6 +129,7 @@ class Data:
                 data_filename = get_filename('txt')
                 if set_name == 'train':
                     dict_filename = get_filename('dict')
+                    print(dict_filename)
                     with open(os.path.join(s.data_dir, dict_filename)) as dict_file:
                         for line in dict_file:
                             word, idx = line.split()
@@ -292,7 +293,7 @@ if __name__ == '__main__':
                 data.nclasses,
                 data.vocsize,  # num_embeddings
                 s.embedding_dim,  # embedding_dim
-                1,
+                1,  # window_size
                 s.memory_size,
                 s.n_memory_slots)
 
