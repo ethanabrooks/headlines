@@ -12,7 +12,9 @@ s = parser.parse_args()
 for set_name in ["article", "title"]:
     dict_filename = 'train.' + set_name + '.dict'
     print(dict_filename)
-    with open(os.path.join(s.data_dir, dict_filename)) as handle:
+    dict_path = os.path.join(s.data_dir, dict_filename)
+    print(dict_path)
+    with open(dict_path) as handle:
         for line in handle:
             word, idx = line.split()
             dictionary[float(idx)].append(word)
