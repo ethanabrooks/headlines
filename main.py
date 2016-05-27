@@ -314,6 +314,10 @@ if __name__ == '__main__':
             loss = None
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
+                    with open('articles.pkl', 'w') as handle:
+                        pickle.dump(articles, handle)
+                    with open('titles.pkl', 'w') as handle:
+                        pickle.dump(titles, handle)
                     if name == 'train':
                         bucket_predictions, new_loss = rnn.learn(articles,
                                                                  titles)

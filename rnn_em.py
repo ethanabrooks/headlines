@@ -234,13 +234,13 @@ class Model(object):
                                      outputs=[y_max, loss],
                                      updates=updates,
                                      allow_input_downcast=True)
-
-        produce_title_test = partial(recurrence, is_training=False, is_article=False)
-        outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
-        [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
-                                                      outputs_info=outputs_info,
-                                                      n_steps=titles.shape[1],
-                                                      name='test_scan')
+        #
+        # produce_title_test = partial(recurrence, is_training=False, is_article=False)
+        # outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
+        # [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
+        #                                               outputs_info=outputs_info,
+        #                                               n_steps=titles.shape[1],
+        #                                               name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
