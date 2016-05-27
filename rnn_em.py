@@ -83,7 +83,11 @@ class Model(object):
 
         for key in randoms:
             # create an attribute with associated shape and random values
-            setattr(self, key, random_shared(randoms[key]))
+            try:
+                setattr(self, key, random_shared(randoms[key]))
+            except MemoryError:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print(key)
 
         for key in zeros:
             # create an attribute with associated shape and values = 0
