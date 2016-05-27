@@ -76,7 +76,7 @@ class Model(object):
 
         def random_shared(shape):
             return theano.shared(
-                0.2 * numpy.random.uniform(-1.0, 1.0, shape).astype(theano.config.floatX))
+                numpy.random.normal(size=shape).astype(theano.config.floatX))
 
         def zeros_shared(shape):
             return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
@@ -136,8 +136,8 @@ class Model(object):
             if is_article or is_training:
                 # get representation of word window
                 document = articles if is_article else titles  # [instances, bucket_width]
-                word_idxs = document[i]  # [instances, 1]
-            x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
+                word_idxs = document[:, i]  # [instances, 1]
+            x_i = self.emb[word_idxs]  # [instances, embedding_dim]
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
@@ -234,20 +234,16 @@ class Model(object):
                                      outputs=[y_max, loss],
                                      updates=updates,
                                      allow_input_downcast=True)
-        #
-        # produce_title_test = partial(recurrence, is_training=False, is_article=False)
-        # outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
-        # [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
-        #                                               outputs_info=outputs_info,
-        #                                               n_steps=titles.shape[1],
-        #                                               name='test_scan')
+
+        produce_title_test = partial(recurrence, is_training=False, is_article=False)
+        outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
+        [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
+                                                      outputs_info=outputs_info,
+                                                      n_steps=titles.shape[1],
+                                                      name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
-
-        normalized_embeddings = self.emb / T.sqrt((self.emb ** 2).sum(axis=1)).dimshuffle(0, 'x')
-        self.normalize = theano.function(inputs=[],
-                                         updates={self.emb: normalized_embeddings})
 
     def save(self, folder):
         for param, name in zip(self.params, self.names):
@@ -261,4 +257,3 @@ if __name__ == '__main__':
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)
-    rnn.normalize()

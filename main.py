@@ -321,7 +321,6 @@ if __name__ == '__main__':
                     if name == 'train':
                         bucket_predictions, new_loss = rnn.learn(articles,
                                                                  titles)
-                        rnn.normalize()
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
                         loss = running_average(loss,
