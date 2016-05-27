@@ -29,7 +29,7 @@ parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding si
 parser.add_argument('--n_memory_slots', type=int, default=100, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
-parser.add_argument('--batch_size', type=int, default=64,
+parser.add_argument('--batch_size', type=int, default=8,
                     help='Number of backprop through time steps')
 parser.add_argument('--window_size', type=int, default=7,
                     help='Number of words in context window')
@@ -161,7 +161,7 @@ class Data:
                 del (dataset.buckets[key])
 
             dataset.buckets = dataset.buckets.values()
-            self.nclasses = len(self.dictionary.title)
+            self.nclasses = self.vocsize
 
     def print_data_stats(self):
         print("\nsize of dictionary:", self.vocsize)
