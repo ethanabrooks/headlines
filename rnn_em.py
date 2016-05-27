@@ -84,6 +84,7 @@ class Model(object):
         for key in randoms:
             # create an attribute with associated shape and random values
             try:
+                print(key)
                 print(randoms[key])
                 setattr(self, key, random_shared(randoms[key]))
             except MemoryError:
