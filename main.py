@@ -76,6 +76,7 @@ def get_bucket_idx(length):
 Instance = namedtuple("instance", "article title")
 Datasets = namedtuple("datasets", "train test")
 ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
+Score = namedtuple("score", "value epoch")
 
 """ classes """
 
@@ -103,7 +104,7 @@ class Data:
 
         self.sets = Datasets(Dataset(), Dataset())
         self.to_int = Instance({}, {})
-        self.to_word = Instance({}, {})
+        self.to_word = Instance(defaultdict(list), defaultdict(list))
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
@@ -137,7 +138,7 @@ class Data:
                             idx = int(float(idx))
                             self.vocsize = max(idx, self.vocsize)
                             self.to_int.__getattribute__(doc_type)[word] = idx
-                            self.to_word.__getattribute__(doc_type)[idx] = word
+                            self.to_word.__getattribute__(doc_type)[idx].append(word)
 
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
@@ -194,14 +195,24 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     sys.stdout.flush()
 
 
-def write_predictions_to_file(to_word, dataset_name, targets, predictions):
+def write_predictions_to_file(to_word_dict, dataset_name, targets, predictions):
+
+    def to_word(idx):
+        word_list = to_word_dict[idx]
+        if len(word_list) == 1:
+            return word_list[0]
+        if len(word_list) < 5:
+            return '{' + '|'.join(word_list) + '}'
+        else:
+            return '<oov>'
+
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = ' '.join([to_word[idx] for idx in arr.reshape(1, -1)])
+                    values = ' '.join([to_word(idx) for idx in arr.ravel()])
                     handle.write(label + values + '\n')
 
 
@@ -216,22 +227,13 @@ def evaluate(predictions, targets):
         return np.hstack(array.ravel() for array in list_of_arrays)
 
     predictions, targets = map(to_vector, (predictions, targets))
-    return (predictions == targets) / predictions.size
+    return (predictions == targets).mean()
 
 
-def print_random_scores(targets, predictions):
-    predictions = [np.random.randint(low=NON_ANSWER_VALUE,
-                                     high=ANSWER_VALUE + 1,
-                                     size=array.shape) for array in predictions]
-    print('\n Random accuracy:', evaluate(predictions, targets))
-
-
-def track_scores(all_scores, accuracy, epoch, dataset_name):
-    Score = namedtuple("score", "value epoch")
-    scores = all_scores[dataset_name]
-    scores.append(Score(accuracy, epoch))
-    best_score = max(scores, key=lambda score: score.value)
-    table = ['accuracy: ', accuracy, best_score.value, best_score.epoch]
+def track_scores(scores, accuracy, epoch, dataset_name):
+    scores[dataset_name].append(Score(accuracy, epoch))
+    best_score = max(scores[dataset_name], key=lambda score: score.value)
+    table = [['accuracy: ', accuracy, best_score.value, best_score.epoch]]
     if accuracy > best_score.value:
         command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
         subprocess.call(command.split())
@@ -274,7 +276,7 @@ if __name__ == '__main__':
                     s.memory_size,
                     s.n_memory_slots)
 
-    scores = {dataset_name: defaultdict(list)
+    scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
         print('\n###\t{:10}{:10}{:10}{:10}###'
@@ -287,27 +289,8 @@ if __name__ == '__main__':
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
 
-                    if s.save_vars:
-                        with open('articles.pkl', 'w') as handle:
-                            pickle.dump(articles, handle)
-                        with open('titles.pkl', 'w') as handle:
-                            pickle.dump(titles, handle)
                     if name == 'train':
-
-                        if s.load_vars:
-                            with open('bucket_predictions.pkl') as handle:
-                                bucket_predictions = pickle.load(handle)
-                            with open('new_loss.pkl') as handle:
-                                new_loss = pickle.load(handle)
-                        else:
-                            bucket_predictions, new_loss = rnn.learn(articles, titles)
-                            if s.save_vars:
-                                with open('bucket_predictions.pkl', 'w') as handle:
-                                    pickle.dump(bucket_predictions, handle)
-                                with open('new_loss.pkl', 'w') as handle:
-                                    pickle.dump(new_loss, handle)
-                                exit(0)
-
+                        bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
                         loss = running_average(loss,
@@ -320,18 +303,10 @@ if __name__ == '__main__':
                                        loss,
                                        start_time)
                     else:
-                        if s.load_vars:
-                            with open('bucket_predictions.pkl') as handle:
-                                bucket_predictions = pickle.load(handle)
-                        else:
-                            bucket_predictions = rnn.infer(articles, titles)
-
-                    predictions.append(bucket_predictions.reshape(titles.shape))
-                    targets.append(titles)
-            write_predictions_to_file(data.to_word['title'], name, predictions, targets)
+                        bucket_predictions = rnn.infer(articles, titles)
+                        predictions.append(bucket_predictions.reshape(titles.shape))
+                        targets.append(titles)
+            write_predictions_to_file(data.to_word.title, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, name)
-            if name == 'test':
-                print_random_scores(predictions, targets)
         print_graphs(scores)
-        exit(0)
