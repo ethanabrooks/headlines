@@ -136,6 +136,7 @@ class Model(object):
                 document = articles if is_article else titles  # [instances, bucket_width]
                 word_idxs = document[:, i]  # [instances, 1]
             x_i = self.emb[word_idxs]  # [instances, embedding_dim]
+            x_i = Print('x_i', ['mean'])(x_i)
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
