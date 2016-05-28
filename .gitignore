@@ -8,3 +8,7 @@ articles.pkl
 bucket_predictions.pkl
 new_loss.pkl
 titles.pkl
+main/
+plots.html
+train.article.dict.orig
+train.title.dict.orig
