@@ -85,8 +85,6 @@ class Model(object):
 
         for key in randoms:
             # create an attribute with associated shape and random values
-            print(key)
-            print(randoms[key])
             setattr(self, key, random_shared(randoms[key]))
 
         for key in zeros:
@@ -247,9 +245,14 @@ class Model(object):
                                      outputs=y_max)
 
     def save(self, folder):
-        for param, name in zip(self.params, self.names):
-            numpy.save(os.path.join(folder, name + '.npy'), param.get_value())
+        params = {name: value for name, value in zip(self.names, self.params)}
+        with open(os.path.join(folder, 'params.pkl'), 'w') as handle:
+            pickle.dump(params, handle)
 
+    def load(self, folder):
+        with open(os.path.join(folder, 'params.pkl')) as handle:
+            params = pickle.load(self.params, handle)
+            self.__dict__.update(params)
 
 if __name__ == '__main__':
     rnn = Model()
