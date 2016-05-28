@@ -136,7 +136,6 @@ class Model(object):
                 document = articles if is_article else titles  # [instances, bucket_width]
                 word_idxs = document[:, i]  # [instances, 1]
             x_i = self.emb[word_idxs]  # [instances, embedding_dim]
-            x_i = Print('x_i', ['mean'])(x_i)
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
@@ -147,40 +146,32 @@ class Model(object):
 
             # eqn 15
             c = T.batched_dot(M_read, w_read)  # [instances, memory_size]
-            c = Print('c', ['mean'])(c)
 
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
                 g = T.nnet.sigmoid(T.dot(x_i, Wg) + bg)  # [instances, mem]
-                g = Print('g', ['mean'])(g)
 
                 # eqn 11
                 k = T.dot(h_im1, self.Wk) + self.bk  # [instances, memory_size]
-                k = Print('k', ['mean'])(k)
 
                 # eqn 13
                 beta = T.dot(h_im1, self.Wb) + self.bb
-                beta = Print('beta', ['mean'])(beta)
                 beta = T.log(1 + T.exp(beta))
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
-                beta = Print('beta', ['mean'])(beta)
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
-                w_hat = Print('w_hat', ['mean'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
 
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
-            w_a = Print('w_a', ['mean'])(w_a)
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
             h = T.dot(x_i, self.Wx) + T.dot(c, self.Wh) + self.bh  # [instances, hidden_size]
-            h = Print('h', ['mean'])(h)
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
@@ -188,16 +179,12 @@ class Model(object):
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
-                w_update = Print('w_update', ['mean'])(w_update)
                 # eqn 17
                 e = T.nnet.sigmoid(T.dot(h_im1, We) + be)  # [instances, mem]
-                e = Print('e', ['mean'])(e)
                 f = 1. - w_update * e  # [instances, mem]
-                f = Print('f', ['mean'])(f)
 
                 # eqn 16
                 v = T.dot(h, self.Wv) + self.bv  # [instances, memory_size]
-                v = Print('v', ['mean'])(v)
 
                 # need to add broadcast layers for memory update
                 f = f.dimshuffle(0, 'x', 1)  # [instances, 1, mem]
