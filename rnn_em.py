@@ -9,6 +9,7 @@ import numpy
 import theano
 from theano import tensor as T
 from theano.compile.nanguardmode import NanGuardMode
+from theano.printing import Print
 
 int32 = 'int32'
 
