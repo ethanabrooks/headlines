@@ -172,6 +172,8 @@ class Model(object):
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
+            h = Print('h')(h)
+
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
@@ -218,6 +220,7 @@ class Model(object):
 
         # loss and updates
         y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
+        y = Print('y')(y)
         y_true = titles.ravel()
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
