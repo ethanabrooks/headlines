@@ -36,6 +36,8 @@ parser.add_argument('--window_size', type=int, default=7,
 parser.add_argument('--learn_rate', type=float, default=0.0627142536696559,
                     help='Learning rate')
 parser.add_argument('--verbose', help='Verbose or not', action='store_true')
+parser.add_argument('--pickle_vars', help='pickle certain variables', action='store_true')
+parser.add_argument('--load_vars', help='pickle.load certain variables', action='store_true')
 parser.add_argument('--dataset', type=str, default='jeopardy',
                     help='select dataset [atis|Jeopardy]')
 parser.add_argument('--plots', type=str, default='plots',
@@ -263,20 +265,14 @@ if __name__ == '__main__':
     data = Data()
     data.print_data_stats()
 
-    print(s.hidden_size,
-                data.nclasses,
-                data.vocsize,  # num_embeddings
-                s.embedding_dim,  # embedding_dim
-                1,  # window_size
-                s.memory_size,
-                s.n_memory_slots)
-    rnn = Model(s.hidden_size,
-                data.nclasses,
-                data.vocsize,  # num_embeddings
-                s.embedding_dim,  # embedding_dim
-                1,  # window_size
-                s.memory_size,
-                s.n_memory_slots)
+    if not s.load_vars:
+        rnn = Model(s.hidden_size,
+                    data.nclasses,
+                    data.vocsize,  # num_embeddings
+                    s.embedding_dim,  # embedding_dim
+                    1,  # window_size
+                    s.memory_size,
+                    s.n_memory_slots)
 
     scores = {dataset_name: defaultdict(list)
               for dataset_name in Datasets._fields}
@@ -290,20 +286,26 @@ if __name__ == '__main__':
             loss = None
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
-                    with open('articles.pkl', 'w') as handle:
-                        pickle.dump(articles, handle)
-                    with open('titles.pkl', 'w') as handle:
-                        pickle.dump(titles, handle)
+
+                    if s.save_vars:
+                        with open('articles.pkl', 'w') as handle:
+                            pickle.dump(articles, handle)
+                        with open('titles.pkl', 'w') as handle:
+                            pickle.dump(titles, handle)
                     if name == 'train':
-                        bucket_predictions, new_loss = rnn.learn(articles, titles)
-                        with open('bucket_predictions.pkl', 'w') as handle:
-                            pickle.dump(bucket_predictions, handle)
-                        with open('new_loss.pkl', 'w') as handle:
-                            pickle.dump(new_loss, handle)
-                        # with open('bucket_predictions.pkl') as handle:
-                        #     bucket_predictions = pickle.load(handle)
-                        # with open('new_loss.pkl', 'w') as handle:
-                        #     new_loss = pickle.load(handle)
+
+                        if s.load_vars:
+                            with open('bucket_predictions.pkl', 'w') as handle:
+                                pickle.dump(bucket_predictions, handle)
+                            with open('new_loss.pkl', 'w') as handle:
+                                pickle.dump(new_loss, handle)
+                        else:
+                            bucket_predictions, new_loss = rnn.learn(articles, titles)
+                            if s.save_vars:
+                                with open('bucket_predictions.pkl') as handle:
+                                    bucket_predictions = pickle.load(handle)
+                                with open('new_loss.pkl') as handle:
+                                    new_loss = pickle.load(handle)
 
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
@@ -317,9 +319,11 @@ if __name__ == '__main__':
                                        loss,
                                        start_time)
                     else:
-                        bucket_predictions = rnn.infer(articles, titles)
-                        # with open('bucket_predictions.pkl') as handle:
-                        #     bucket_predictions = pickle.load(handle)
+                        if s.load_vars:
+                            with open('bucket_predictions.pkl') as handle:
+                                bucket_predictions = pickle.load(handle)
+                        else:
+                            bucket_predictions = rnn.infer(articles, titles)
 
                     predictions.append(bucket_predictions.reshape(titles.shape))
                     targets.append(titles)
@@ -328,5 +332,5 @@ if __name__ == '__main__':
             track_scores(scores, accuracy, epoch, name)
             if name == 'test':
                 print_random_scores(predictions, targets)
-            exit(0)
         print_graphs(scores)
+        exit(0)
