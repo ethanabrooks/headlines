@@ -36,7 +36,7 @@ parser.add_argument('--window_size', type=int, default=7,
 parser.add_argument('--learn_rate', type=float, default=0.0627142536696559,
                     help='Learning rate')
 parser.add_argument('--verbose', help='Verbose or not', action='store_true')
-parser.add_argument('--pickle_vars', help='pickle certain variables', action='store_true')
+parser.add_argument('--save_vars', help='pickle certain variables', action='store_true')
 parser.add_argument('--load_vars', help='pickle.load certain variables', action='store_true')
 parser.add_argument('--dataset', type=str, default='jeopardy',
                     help='select dataset [atis|Jeopardy]')
@@ -306,6 +306,7 @@ if __name__ == '__main__':
                                     bucket_predictions = pickle.load(handle)
                                 with open('new_loss.pkl') as handle:
                                     new_loss = pickle.load(handle)
+                                exit(0)
 
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
