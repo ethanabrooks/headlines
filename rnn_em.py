@@ -105,6 +105,8 @@ class Model(object):
         self.params = [eval('self.' + name) for name in self.names]
 
         def recurrence(i, h_im1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
+            M_a = Print('M_a', ['mean'])(M_a)
+            w_a = Print('w_a', ['mean'])(w_a)
             """
             notes
             Headers from paper in all caps
@@ -144,6 +146,7 @@ class Model(object):
 
             # eqn 15
             c = T.batched_dot(M_read, w_read)  # [instances, memory_size]
+            c = Print('c', ['mean'])(c)
 
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
@@ -170,10 +173,10 @@ class Model(object):
             # MODEL INPUT AND OUTPUT
             # eqn 9
             h = T.dot(x_i, self.Wx) + T.dot(c, self.Wh) + self.bh  # [instances, hidden_size]
+            h = Print('h', ['mean'])(h)
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
-            h = Print('h')(h)
 
 
             # EXTERNAL MEMORY UPDATE
