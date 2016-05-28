@@ -230,13 +230,6 @@ def evaluate(predictions, targets):
     return (predictions == targets).mean()
 
 
-# def print_random_scores(targets, predictions):
-#     predictions = [np.random.randint(low=NON_ANSWER_VALUE,
-#                                      high=ANSWER_VALUE + 1,
-#                                      size=array.shape) for array in predictions]
-#     print('\n Random accuracy:', evaluate(predictions, targets))
-
-
 def track_scores(scores, accuracy, epoch, dataset_name):
     scores[dataset_name].append(Score(accuracy, epoch))
     best_score = max(scores[dataset_name], key=lambda score: score.value)
@@ -296,27 +289,8 @@ if __name__ == '__main__':
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
 
-                    if s.save_vars:
-                        with open('articles.pkl', 'w') as handle:
-                            pickle.dump(articles, handle)
-                        with open('titles.pkl', 'w') as handle:
-                            pickle.dump(titles, handle)
                     if name == 'train':
-
-                        if s.load_vars:
-                            with open('bucket_predictions.pkl') as handle:
-                                bucket_predictions = pickle.load(handle)
-                            with open('new_loss.pkl') as handle:
-                                new_loss = pickle.load(handle)
-                        else:
-                            bucket_predictions, new_loss = rnn.learn(articles, titles)
-                            if s.save_vars:
-                                with open('bucket_predictions.pkl', 'w') as handle:
-                                    pickle.dump(bucket_predictions, handle)
-                                with open('new_loss.pkl', 'w') as handle:
-                                    pickle.dump(new_loss, handle)
-                                exit(0)
-
+                        bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
                         loss = running_average(loss,
@@ -329,22 +303,10 @@ if __name__ == '__main__':
                                        loss,
                                        start_time)
                     else:
-                        if s.load_vars:
-                            with open('bucket_predictions.pkl') as handle:
-                                bucket_predictions = pickle.load(handle)
-                        else:
-                            bucket_predictions = rnn.infer(articles, titles)
-
-                    print(bucket_predictions.shape, titles.shape)
-                    try:
+                        bucket_predictions = rnn.infer(articles, titles)
                         predictions.append(bucket_predictions.reshape(titles.shape))
                         targets.append(titles)
-                    except ValueError:
-                        pass
             write_predictions_to_file(data.to_word.title, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, name)
-            # if name == 'test':
-            #     print_random_scores(predictions, targets)
         print_graphs(scores)
-        exit(0)
