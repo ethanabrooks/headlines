@@ -29,7 +29,7 @@ parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding si
 parser.add_argument('--n_memory_slots', type=int, default=20, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
-parser.add_argument('--batch_size', type=int, default=8,
+parser.add_argument('--batch_size', type=int, default=1024,
                     help='Number of backprop through time steps')
 parser.add_argument('--window_size', type=int, default=7,
                     help='Number of words in context window')
@@ -100,7 +100,8 @@ class Data:
     def __init__(self):
 
         self.sets = Datasets(Dataset(), Dataset())
-        self.dictionary = Instance({GO: 0}, {GO: 0})
+        self.to_int = Instance({}, {})
+        self.to_word = Instance({}, {})
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
@@ -115,7 +116,7 @@ class Data:
             size = s.bucket_factor ** get_bucket_idx(length)
             sentence_vector = np.zeros(size, dtype='int32') + PAD_VALUE
             for i, word in enumerate(tokens):
-                sentence_vector[i] = self.dictionary.__getattribute__(doc_type)[word]
+                sentence_vector[i] = self.to_int.__getattribute__(doc_type)[word]
             return sentence_vector
 
         for set_name in Datasets._fields:
@@ -133,7 +134,8 @@ class Data:
                             word, idx = line.split()
                             idx = int(float(idx))
                             self.vocsize = max(idx, self.vocsize)
-                            self.dictionary.__getattribute__(doc_type)[word] = idx
+                            self.to_int.__getattribute__(doc_type)[word] = idx
+                            self.to_word.__getattribute__(doc_type)[idx] = word
 
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
@@ -190,16 +192,15 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     sys.stdout.flush()
 
 
-def write_predictions_to_file(dataset_name, targets, predictions):
+def write_predictions_to_file(to_word, dataset_name, targets, predictions):
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    handle.write(label)
-                    np.savetxt(handle, arr.reshape(1, -1), delimiter=' ', fmt='%i')
-                    handle.write('\n')
+                    values = ' '.join([to_word[idx] for idx in arr.reshape(1, -1)])
+                    handle.write(label + values + '\n')
 
 
 def evaluate(predictions, targets):
@@ -213,47 +214,25 @@ def evaluate(predictions, targets):
         return np.hstack(array.ravel() for array in list_of_arrays)
 
     predictions, targets = map(to_vector, (predictions, targets))
-
-    metrics = np.zeros(3)
-
-    def confusion((pred_is_pos, tgt_is_pos)):
-        logical_and = np.logical_and(
-            (predictions == ANSWER_VALUE) == pred_is_pos,
-            (targets == ANSWER_VALUE) == tgt_is_pos
-        )
-        return logical_and.sum()
-
-    tp, fp, fn = map(confusion, ((True, True), (True, False), (False, True)))
-    metrics += np.array((tp, fp, fn))
-    tp, fp, fn = metrics
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    f1 = 2 * precision * recall / (precision + recall)
-
-    return ConfusionMatrix(f1, precision, recall)
+    return (predictions == targets) / predictions.size
 
 
 def print_random_scores(targets, predictions):
     predictions = [np.random.randint(low=NON_ANSWER_VALUE,
                                      high=ANSWER_VALUE + 1,
                                      size=array.shape) for array in predictions]
-    confusion_matrix = evaluate(predictions, targets)
-    print('\n' + tabulate(confusion_matrix.__dict__.iteritems(),
-                          headers=["RANDOM", "score"]))
+    print('\n Random accuracy:', evaluate(predictions, targets))
 
 
-def track_scores(all_scores, confusion_matrix, epoch, dataset_name):
+def track_scores(all_scores, accuracy, epoch, dataset_name):
     Score = namedtuple("score", "value epoch")
     scores = all_scores[dataset_name]
-    table = []
-    for key in confusion_matrix._fields:
-        result = confusion_matrix.__getattribute__(key)
-        scores[key].append(Score(result, epoch))
-        best_score = max(scores[key], key=lambda score: score.value)
-        table.append([key, result, best_score.value, best_score.epoch])
-        if result > best_score.value:
-            command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
-            subprocess.call(command.split())
+    scores.append(Score(accuracy, epoch))
+    best_score = max(scores, key=lambda score: score.value)
+    table = ['accuracy: ', accuracy, best_score.value, best_score.epoch]
+    if accuracy > best_score.value:
+        command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
+        subprocess.call(command.split())
     headers = [dataset_name.upper(), "score", "best score", "best score epoch"]
     print('\n\n' + tabulate(table, headers=headers))
 
@@ -267,22 +246,19 @@ def print_graphs(scores):
     }
 
     plots = []
-    for metric in ConfusionMatrix._fields:
-        plot = figure(width=500, plot_height=500, title=metric)
-        for dataset_name in scores:
-            metric_scores = [score.value for score in scores[dataset_name][metric]]
-            plot.line(range(len(metric_scores)),
-                      metric_scores,
-                      legend=dataset_name,
-                      **properties_per_dataset[dataset_name])
-        plots.append(plot)
+    plot = figure(width=500, plot_height=500, title='accuracy')
+    for dataset_name in scores:
+        accuracies = [score.value for score in scores[dataset_name]]
+        plot.line(range(len(accuracies)),
+                  accuracies,
+                  legend=dataset_name,
+                  **properties_per_dataset[dataset_name])
+    plots.append(plot)
     p = vplot(*plots)
     save(p)
 
 
 if __name__ == '__main__':
-
-    ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
 
     data = Data()
     data.print_data_stats()
@@ -307,13 +283,18 @@ if __name__ == '__main__':
             loss = None
             for bucket in data.sets.__getattribute__(name).buckets:
                 for articles, titles in get_batches(bucket):
-                    with open('articles.pkl', 'w') as handle:
-                        pickle.dump(articles, handle)
-                    with open('titles.pkl', 'w') as handle:
-                        pickle.dump(titles, handle)
                     if name == 'train':
                         bucket_predictions, new_loss = rnn.learn(articles,
                                                                  titles)
+                        with open('bucket_predictions.pkl', 'w') as handle:
+                            pickle.dump(bucket_predictions, handle)
+                        with open('new_loss.pkl', 'w') as handle:
+                            pickle.dump(new_loss, handle)
+                        # with open('bucket_predictions.pkl') as handle:
+                        #     bucket_predictions = pickle.load(handle)
+                        # with open('new_loss.pkl', 'w') as handle:
+                        #     new_loss = pickle.load(handle)
+
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
                         loss = running_average(loss,
@@ -327,12 +308,15 @@ if __name__ == '__main__':
                                        start_time)
                     else:
                         bucket_predictions = rnn.infer(articles, titles)
+                        # with open('bucket_predictions.pkl') as handle:
+                        #     bucket_predictions = pickle.load(handle)
 
                     predictions.append(bucket_predictions.reshape(titles.shape))
                     targets.append(titles)
-            write_predictions_to_file(name, predictions, targets)
-            confusion_matrix = evaluate(predictions, targets)
-            track_scores(scores, confusion_matrix, epoch, name)
+            write_predictions_to_file(data.to_word['title'], name, predictions, targets)
+            accuracy = evaluate(predictions, targets)
+            track_scores(scores, accuracy, epoch, name)
             if name == 'test':
                 print_random_scores(predictions, targets)
+            exit(0)
         print_graphs(scores)
