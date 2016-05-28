@@ -8,6 +8,7 @@ import lasagne
 import numpy
 import theano
 from theano import tensor as T
+from theano.compile.nanguardmode import NanGuardMode
 
 int32 = 'int32'
 
@@ -227,7 +228,10 @@ class Model(object):
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max, loss],
                                      updates=updates,
-                                     allow_input_downcast=True)
+                                     allow_input_downcast=True,
+                                     mode=NanGuardMode(nan_is_error=True,
+                                                       inf_is_error=True,
+                                                       big_is_error=True))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
