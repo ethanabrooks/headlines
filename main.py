@@ -295,17 +295,17 @@ if __name__ == '__main__':
                     if name == 'train':
 
                         if s.load_vars:
-                            with open('bucket_predictions.pkl', 'w') as handle:
-                                pickle.dump(bucket_predictions, handle)
-                            with open('new_loss.pkl', 'w') as handle:
-                                pickle.dump(new_loss, handle)
+                            with open('bucket_predictions.pkl') as handle:
+                                bucket_predictions = pickle.load(handle)
+                            with open('new_loss.pkl') as handle:
+                                new_loss = pickle.load(handle)
                         else:
                             bucket_predictions, new_loss = rnn.learn(articles, titles)
                             if s.save_vars:
-                                with open('bucket_predictions.pkl') as handle:
-                                    bucket_predictions = pickle.load(handle)
-                                with open('new_loss.pkl') as handle:
-                                    new_loss = pickle.load(handle)
+                                with open('bucket_predictions.pkl', 'w') as handle:
+                                    pickle.dump(bucket_predictions, handle)
+                                with open('new_loss.pkl', 'w') as handle:
+                                    pickle.dump(new_loss, handle)
                                 exit(0)
 
                         num_instances = articles.shape[0]
