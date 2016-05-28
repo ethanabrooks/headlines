@@ -254,10 +254,8 @@ if __name__ == '__main__':
     rnn = Model()
     with open('articles.pkl') as handle:
         articles = pickle.load(handle)
-        print(articles.shape)
     with open('titles.pkl') as handle:
         titles = pickle.load(handle)
-        print(titles.shape)
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result.shape)
