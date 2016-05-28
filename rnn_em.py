@@ -135,7 +135,7 @@ class Model(object):
                 # get representation of word window
                 document = articles if is_article else titles  # [instances, bucket_width]
                 word_idxs = document[:, i]  # [instances, 1]
-            x_i = self.emb[word_idxs]  # [instances, embedding_dim]
+            x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
