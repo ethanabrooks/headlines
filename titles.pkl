@@ -1,4 +1,3 @@
-cnumpy.core.multiarray
 _reconstruct
 p0
 (cnumpy

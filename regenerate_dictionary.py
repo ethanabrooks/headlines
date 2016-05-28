@@ -6,11 +6,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
                     help='path to data')
 
-dictionary = defaultdict(list)
 special_words = [['<pad>'], ['<go>'], ['<oov>']]
 s = parser.parse_args()
 for set_name in ["article", "title"]:
-    dict_filename = 'train.' + set_name + '.dict'
+    dictionary = defaultdict(list)
+    reverse_dictionary = dict()
+    dict_filename = 'train.' + set_name + '.dict.orig'
     print(dict_filename)
     dict_path = os.path.join(s.data_dir, dict_filename)
     print(dict_path)
@@ -18,7 +19,9 @@ for set_name in ["article", "title"]:
         for line in handle:
             word, idx = line.split()
             dictionary[float(idx)].append(word)
+            reverse_dictionary[word] = idx
 
+    dict_filename = 'train.' + set_name + '.dict'
     with open(dict_filename, 'w+') as handle:
         for i, word_list in enumerate(special_words + dictionary.values()):
             for word in word_list:
