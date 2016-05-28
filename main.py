@@ -287,13 +287,6 @@ if __name__ == '__main__':
     data = Data()
     data.print_data_stats()
 
-    print(s.hidden_size,
-          data.nclasses,
-          data.vocsize,  # num_embeddings
-          s.embedding_dim,  # embedding_dim
-          1,  # window_size
-          s.memory_size,
-          s.n_memory_slots)
     rnn = Model(s.hidden_size,
                 data.nclasses,
                 data.vocsize,  # num_embeddings
