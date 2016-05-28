@@ -105,8 +105,6 @@ class Model(object):
         self.params = [eval('self.' + name) for name in self.names]
 
         def recurrence(i, h_im1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
-            M_a = Print('M_a', ['mean'])(M_a)
-            w_a = Print('w_a', ['mean'])(w_a)
             """
             notes
             Headers from paper in all caps
@@ -222,7 +220,6 @@ class Model(object):
 
         # loss and updates
         y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
-        y = Print('y')(y)
         y_true = titles.ravel()
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
