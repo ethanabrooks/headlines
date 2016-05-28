@@ -183,10 +183,13 @@ class Model(object):
             def update_memory(We, be, w_update, M_update):
                 # eqn 17
                 e = T.nnet.sigmoid(T.dot(h_im1, We) + be)  # [instances, mem]
+                e = Print('e', ['mean'])(e)
                 f = 1. - w_update * e  # [instances, mem]
+                f = Print('f', ['mean'])(f)
 
                 # eqn 16
                 v = T.dot(h, self.Wv) + self.bv  # [instances, memory_size]
+                v = Print('v', ['mean'])(v)
 
                 # need to add broadcast layers for memory update
                 f = f.dimshuffle(0, 'x', 1)  # [instances, 1, mem]
