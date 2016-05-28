@@ -152,22 +152,27 @@ class Model(object):
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
                 g = T.nnet.sigmoid(T.dot(x_i, Wg) + bg)  # [instances, mem]
+                g = Print('g', ['mean'])(g)
 
                 # eqn 11
                 k = T.dot(h_im1, self.Wk) + self.bk  # [instances, memory_size]
+                k = Print('k', ['mean'])(k)
 
                 # eqn 13
                 beta = T.dot(h_im1, self.Wb) + self.bb
                 beta = T.log(1 + T.exp(beta))
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
+                beta = Print('beta', ['mean'])(beta)
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
+                w_hat = Print('w_hat', ['mean'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
 
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
+            w_a = Print('w_a', ['mean'])(w_a)
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
 
@@ -182,6 +187,7 @@ class Model(object):
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
+                w_update = Print('w_update', ['mean'])(w_update)
                 # eqn 17
                 e = T.nnet.sigmoid(T.dot(h_im1, We) + be)  # [instances, mem]
                 e = Print('e', ['mean'])(e)
