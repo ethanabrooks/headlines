@@ -221,8 +221,6 @@ class Model(object):
                                                       n_steps=titles.shape[1],
                                                       name='train_scan')
 
-        y, y_max = [param[-1, :, :] for param in (y, y_max)]
-
         # loss and updates
         y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
         y_true = titles.ravel()
