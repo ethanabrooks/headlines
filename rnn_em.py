@@ -78,7 +78,7 @@ class Model(object):
 
         def random_shared(shape):
             return theano.shared(
-                numpy.random.normal(size=shape).astype(theano.config.floatX))
+                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX))
 
         def zeros_shared(shape):
             return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
@@ -160,6 +160,7 @@ class Model(object):
 
                 # eqn 13
                 beta = T.dot(h_im1, self.Wb) + self.bb
+                beta = Print('beta', ['mean'])(beta)
                 beta = T.log(1 + T.exp(beta))
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
                 beta = Print('beta', ['mean'])(beta)
