@@ -235,7 +235,7 @@ class Model(object):
                                                        big_is_error=True))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
-        outputs_info[2] = y_article
+        outputs_info[2] = y_article[-1]
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
                                                       n_steps=titles.shape[1],
