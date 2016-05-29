@@ -182,15 +182,14 @@ def running_average(loss, new_loss, instances_processed, num_instances):
         return (loss * (instances_processed - num_instances) + new_loss) / instances_processed
 
 
-def format_time(seconds):
-    if seconds is None:
-        return float("nan")
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
-
-
 def print_progress(epoch, instances_processed, num_instances, loss, start_time):
+    def format_time(seconds):
+        if seconds is None:
+            return float("nan")
+        minutes, seconds = divmod(seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
+
     progress = round(float(instances_processed) / num_instances, ndigits=3)
     elapsed_time = time.time() - start_time
     eta = elapsed_time / progress if progress else None
