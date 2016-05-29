@@ -8,9 +8,12 @@ parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_f
                     help='path to data')
 
 n = 40 * 1000
-special_words = [['<pad>'], ['<go>'], ['<oov>']]
+PAD = '<pad>'
+GO = '<go>'
+OOV = '<oov>'
+special_words = [PAD, GO, OOV]
 s = parser.parse_args()
-counts = []
+counts = {}
 for set_name in ["article", "title"]:
     dictionary, reverse_dictionary = dict(), dict()
     dict_filename = 'train.' + set_name + '.dict.orig'
@@ -20,11 +23,11 @@ for set_name in ["article", "title"]:
     with open(dict_path) as handle:
         for line in handle:
             word, count = line.split()
-            counts.append((word, float(count)))
+            counts[word] = float(count)
 
 
-top_n_counts = sorted(counts, key=itemgetter(1), reverse=True)[:n]
-for word, _ in top_n_counts:
+top_n_counts = sorted(counts, key=counts.__getitem__, reverse=True)[:n]
+for word in special_words + top_n_counts:
     dictionary[word] = len(dictionary)
 
 dict_filename = 'dict.pkl'
