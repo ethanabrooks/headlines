@@ -61,7 +61,8 @@ np.random.seed(s.seed)
 random.seed(s.seed)
 
 PAD = chr(0)
-OOV = chr(1)
+GO = chr(1)
+OOV = chr(2)
 
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
@@ -105,21 +106,23 @@ class Data:
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
-        vocab = PAD + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
+        vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
         self.to_char = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
 
-        def to_array(string):
+        def to_array(string, doc_type):
             length = len(string) + 1
             size = s.bucket_factor ** get_bucket_idx(length)
+            if doc_type == 'title':
+                string = GO + string
             sentence_vector = np.zeros(size, dtype='int32') + self.to_int[PAD]
             for i, char in enumerate(string):
-                try:
-                    char_code = self.to_int[char]
-                except KeyError:
-                    char_code = self.to_int[OOV]
+                if char not in self.to_int:
+                    char = OOV
+                char_code = self.to_int[char]
                 sentence_vector[i] = char_code
             return sentence_vector
+
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
             for doc_type in Instance._fields:
@@ -133,7 +136,7 @@ class Data:
                         self.num_instances += 1
                         if set_name == 'train':
                             self.num_train += 1
-                        array = to_array(line)
+                        array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
 
             dataset.fill_buckets()
