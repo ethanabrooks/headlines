@@ -256,7 +256,8 @@ if __name__ == '__main__':
                     s.embedding_dim,  # embedding_dim
                     1,  # window_size
                     s.memory_size,
-                    s.n_memory_slots)
+                    s.n_memory_slots,
+                    data.to_int[GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}

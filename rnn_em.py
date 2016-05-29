@@ -33,7 +33,8 @@ class Model(object):
                  embedding_dim=100,
                  window_size=1,  # TODO: do we want some kind of window?
                  memory_size=40,
-                 n_memory_slots=8):
+                 n_memory_slots=8,
+                 go_code=1):
 
         articles, titles = T.imatrices('articles', 'titles')
         n_article_slots = int(n_memory_slots / 2)  # TODO derive this from an arg
