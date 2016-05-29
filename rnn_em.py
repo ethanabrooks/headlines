@@ -84,6 +84,8 @@ class Model(object):
             return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
 
         for key in randoms:
+            print(key)
+            print(randoms[key])
             # create an attribute with associated shape and random values
             setattr(self, key, random_shared(randoms[key]))
 

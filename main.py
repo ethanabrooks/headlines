@@ -250,6 +250,14 @@ if __name__ == '__main__':
     data.print_data_stats()
 
     if not s.load_vars:
+        print(s.hidden_size,
+                    data.nclasses,
+                    data.vocsize,  # num_embeddings
+                    s.embedding_dim,  # embedding_dim
+                    1,  # window_size
+                    s.memory_size,
+                    s.n_memory_slots,
+                    data.to_int[GO])
         rnn = Model(s.hidden_size,
                     data.nclasses,
                     data.vocsize,  # num_embeddings
