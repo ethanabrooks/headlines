@@ -55,6 +55,7 @@ print('-' * 80)
 folder = os.path.basename(__file__).split('.')[0]
 if not os.path.exists(folder):
     os.mkdir(folder)
+dict_filename = 'dict.pkl'
 
 np.random.seed(s.seed)
 random.seed(s.seed)
@@ -105,7 +106,6 @@ class Data:
         self.sets = Datasets(Dataset(), Dataset())
         self.to_int = Instance({}, {})
         self.to_word = Instance(defaultdict(list), defaultdict(list))
-        occurences = dict()
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
@@ -131,15 +131,15 @@ class Data:
                     return '.'.join([set_name, doc_type, extension])
 
                 data_filename = get_filename('txt')
-                if set_name == 'train':
-                    dict_filename = get_filename('dict')
-                    with open(dict_filename) as dict_file:
-                        for line in dict_file:
-                            word, idx = line.split()
-                            idx = int(float(idx))
-                            self.vocsize = max(idx, self.vocsize)
-                            self.to_int.__getattribute__(doc_type)[word] = idx
-                            self.to_word.__getattribute__(doc_type)[idx].append(word)
+                # if set_name == 'train':
+                #     dict_filename = get_filename('dict')
+                #     with open(dict_filename) as dict_file:
+                #         for line in dict_file:
+                #             word, idx = line.split()
+                #             idx = int(float(idx))
+                #             self.vocsize = max(idx, self.vocsize)
+                #             self.to_int.__getattribute__(doc_type)[word] = idx
+                #             self.to_word.__getattribute__(doc_type)[idx].append(word)
 
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
@@ -148,6 +148,10 @@ class Data:
                             self.num_train += 1
                         array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
+
+                with open(dict_filename) as dict_file:
+                    self.to_int = pickle.load(dict_file)
+                    self.to_word = {idx: word for word, idx in self.to_int.itervalues()}
 
             dataset.fill_buckets()
             print('Bucket allocation:')
@@ -307,7 +311,7 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                         predictions.append(bucket_predictions.reshape(titles.shape))
                         targets.append(titles)
-            write_predictions_to_file(data.to_word.title, name, predictions, targets)
+            write_predictions_to_file(data.to_word, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, name)
         print_graphs(scores)
