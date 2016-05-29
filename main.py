@@ -104,7 +104,7 @@ class Data:
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
-        vocab = [PAD] + list('\n ' + string.lowercase + string.punctuation + string.digits)
+        vocab = [PAD] + list('\xc2\n ' + string.lowercase + string.punctuation + string.digits)
         self.to_char = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
 
