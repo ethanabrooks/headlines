@@ -35,6 +35,7 @@ class Model(object):
                  memory_size=40,
                  n_memory_slots=8,
                  go_code=1):
+        print(self.__dict__())
 
         articles, titles = T.imatrices('articles', 'titles')
         n_article_slots = int(n_memory_slots / 2)  # TODO derive this from an arg
@@ -75,6 +76,8 @@ class Model(object):
             'bh': hidden_size,
             'b': nclasses,
         }
+        print(randoms)
+        print(zeros)
 
         def random_shared(shape):
             return theano.shared(
@@ -84,8 +87,6 @@ class Model(object):
             return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
 
         for key in randoms:
-            print(key)
-            print(randoms[key])
             # create an attribute with associated shape and random values
             setattr(self, key, random_shared(randoms[key]))
 

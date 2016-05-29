@@ -130,6 +130,7 @@ class Data:
                     return '.'.join([set_name, doc_type, extension])
 
                 data_filename = get_filename('txt')
+                self.num_instances = 0
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
                         self.num_instances += 1
@@ -137,6 +138,8 @@ class Data:
                             self.num_train += 1
                         array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
+                        if self.num_instances == s.num_instances:
+                            break
 
             dataset.fill_buckets()
             print('Bucket allocation:')
@@ -179,15 +182,25 @@ def running_average(loss, new_loss, instances_processed, num_instances):
         return (loss * (instances_processed - num_instances) + new_loss) / instances_processed
 
 
+def format_time(seconds):
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
+
+
 def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     progress = round(float(instances_processed) / num_instances, ndigits=3)
-    print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10.2f}###'
-          .format(epoch, progress, float(loss), time.time() - start_time), end='')
+    elapsed_time = time.time() - start_time
+    eta = elapsed_time / progress
+    print(eta)
+    print(format_time(eta))
+    elapsed_time, eta = map(format_time, (elapsed_time, eta))
+    print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10}{:<10}###'
+          .format(epoch, progress, float(loss), elapsed_time, eta), end='')
     sys.stdout.flush()
 
 
 def write_predictions_to_file(to_char, dataset_name, targets, predictions):
-
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
@@ -250,14 +263,6 @@ if __name__ == '__main__':
     data.print_data_stats()
 
     if not s.load_vars:
-        print(s.hidden_size,
-                    data.nclasses,
-                    data.vocsize,  # num_embeddings
-                    s.embedding_dim,  # embedding_dim
-                    1,  # window_size
-                    s.memory_size,
-                    s.n_memory_slots,
-                    data.to_int[GO])
         rnn = Model(s.hidden_size,
                     data.nclasses,
                     data.vocsize,  # num_embeddings
@@ -270,8 +275,8 @@ if __name__ == '__main__':
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
-        print('\n###\t{:10}{:10}{:10}{:10}###'
-              .format('epoch', 'progress', 'loss', 'runtime'))
+        print('\n###\t{:10}{:10}{:10}{:10}{:10}###'
+              .format('epoch', 'progress', 'loss', 'runtime', 'ETA'))
         start_time = time.time()
         for name in list(Datasets._fields):
             random_predictions, predictions, targets = [], [], []
