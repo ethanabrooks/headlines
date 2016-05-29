@@ -194,9 +194,19 @@ def running_average(loss, new_loss, instances_processed, num_instances):
 
 
 def print_progress(epoch, instances_processed, num_instances, loss, start_time):
+    def format_time(seconds):
+        if seconds is None:
+            return float("nan")
+        minutes, seconds = divmod(seconds, 60)
+        hours, minutes = divmod(minutes, 60)
+        return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
+
     progress = round(float(instances_processed) / num_instances, ndigits=3)
-    print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10.2f}###'
-          .format(epoch, progress, float(loss), time.time() - start_time), end='')
+    elapsed_time = time.time() - start_time
+    eta = elapsed_time / progress if progress else None
+    elapsed_time, eta = map(format_time, (elapsed_time, eta))
+    print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10}{:<10}###'
+          .format(epoch, progress, float(loss), elapsed_time, eta), end='')
     sys.stdout.flush()
 
 
