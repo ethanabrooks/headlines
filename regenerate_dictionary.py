@@ -8,13 +8,13 @@ parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_f
 
 special_words = [['<pad>'], ['<go>'], ['<oov>']]
 s = parser.parse_args()
-for set_name in ["article", "title"]:
-    dictionary = defaultdict(list)
-    reverse_dictionary = dict()
-    dict_filename = 'train.' + set_name + '.dict.orig'
-    print(dict_filename)
-    dict_path = os.path.join(s.data_dir, dict_filename)
-    print(dict_path)
+dictionary = dict()
+reverse_dictionary = dict()
+dict_filename = 'dict.txt'
+dict_path = os.path.join(s.data_dir, dict_filename)
+for set_name in ['test', 'train']:
+    data_filename = 'dict.txt'
+    data_path = os.path.join(s.data_dir, dict_filename)
     with open(dict_path) as handle:
         for line in handle:
             word, idx = line.split()

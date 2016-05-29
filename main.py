@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import argparse
 import random
+import string
 import subprocess
 import sys
 import time
@@ -59,10 +60,7 @@ if not os.path.exists(folder):
 np.random.seed(s.seed)
 random.seed(s.seed)
 
-PAD_VALUE = 0
-NON_ANSWER_VALUE = 1
-ANSWER_VALUE = 2
-GO = '<go>'
+PAD = '<pad>'
 
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
@@ -103,25 +101,20 @@ class Data:
     def __init__(self):
 
         self.sets = Datasets(Dataset(), Dataset())
-        self.to_int = Instance({}, {})
-        self.to_word = Instance(defaultdict(list), defaultdict(list))
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
+        vocab = [PAD] + list('\n ' + string.lowercase + string.punctuation + string.digits)
+        self.to_char = dict(enumerate(vocab))
+        self.to_int = {char: i for i, char in enumerate(vocab)}
 
-        def to_array(string, doc_type):
-            if doc_type == 'article':
-                string = GO + ' ' + string
-            tokens = string.split()
-            length = len(tokens)
-            if not tokens:
-                length += 1
+        def to_array(string):
+            length = len(string) + 1
             size = s.bucket_factor ** get_bucket_idx(length)
-            sentence_vector = np.zeros(size, dtype='int32') + PAD_VALUE
-            for i, word in enumerate(tokens):
-                sentence_vector[i] = self.to_int.__getattribute__(doc_type)[word]
+            sentence_vector = np.zeros(size, dtype='int32') + self.to_int[PAD]
+            for i, char in enumerate(string):
+                sentence_vector[i] = self.to_int[char]
             return sentence_vector
-
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
             for doc_type in Instance._fields:
@@ -130,22 +123,12 @@ class Data:
                     return '.'.join([set_name, doc_type, extension])
 
                 data_filename = get_filename('txt')
-                if set_name == 'train':
-                    dict_filename = get_filename('dict')
-                    with open(dict_filename) as dict_file:
-                        for line in dict_file:
-                            word, idx = line.split()
-                            idx = int(float(idx))
-                            self.vocsize = max(idx, self.vocsize)
-                            self.to_int.__getattribute__(doc_type)[word] = idx
-                            self.to_word.__getattribute__(doc_type)[idx].append(word)
-
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
                         self.num_instances += 1
                         if set_name == 'train':
                             self.num_train += 1
-                        array = to_array(line, doc_type)
+                        array = to_array(line)
                         dataset.instances.__getattribute__(doc_type).append(array)
 
             dataset.fill_buckets()
@@ -166,7 +149,7 @@ class Data:
                 del (dataset.buckets[key])
 
             dataset.buckets = dataset.buckets.values()
-            self.nclasses = self.vocsize + 1
+            self.nclasses = len(self.to_int)
 
     def print_data_stats(self):
         print("\nsize of dictionary:", self.vocsize)
@@ -274,7 +257,8 @@ if __name__ == '__main__':
                     s.embedding_dim,  # embedding_dim
                     1,  # window_size
                     s.memory_size,
-                    s.n_memory_slots)
+                    s.n_memory_slots,
+                    data.to_int[GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
