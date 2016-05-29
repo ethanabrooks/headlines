@@ -262,7 +262,6 @@ if __name__ == '__main__':
     data = Data()
     data.print_data_stats()
 
-    print(data.to_int)
     rnn = Model(s.hidden_size,
                 data.nclasses,
                 data.vocsize,  # num_embeddings
