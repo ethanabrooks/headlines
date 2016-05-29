@@ -122,6 +122,7 @@ class Model(object):
                       h w, M (see above)]
             """
             i_type = T.iscalar if is_article or is_training else T.ivector
+            print(i.type, i_type)
             assert i.type == i_type
 
             if not is_article:
