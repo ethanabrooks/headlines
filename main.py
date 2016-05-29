@@ -183,16 +183,7 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     sys.stdout.flush()
 
 
-def write_predictions_to_file(to_word_dict, dataset_name, targets, predictions):
-
-    def to_word(idx):
-        word_list = to_word_dict[idx]
-        if len(word_list) == 1:
-            return word_list[0]
-        if len(word_list) < 5:
-            return '{' + '|'.join(word_list) + '}'
-        else:
-            return '<oov>'
+def write_predictions_to_file(to_char, dataset_name, targets, predictions):
 
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
@@ -200,7 +191,7 @@ def write_predictions_to_file(to_word_dict, dataset_name, targets, predictions):
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = ' '.join([to_word(idx) for idx in arr.ravel()])
+                    values = ''.join([to_char[idx] for idx in arr.ravel()])
                     handle.write(label + values + '\n')
 
 
@@ -294,7 +285,7 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                         predictions.append(bucket_predictions.reshape(titles.shape))
                         targets.append(titles)
-            write_predictions_to_file(data.to_word.title, name, predictions, targets)
+            write_predictions_to_file(data.to_char, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, name)
         print_graphs(scores)
