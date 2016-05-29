@@ -113,7 +113,10 @@ class Data:
             size = s.bucket_factor ** get_bucket_idx(length)
             sentence_vector = np.zeros(size, dtype='int32') + self.to_int[PAD]
             for i, char in enumerate(string):
-                sentence_vector[i] = self.to_int[char]
+                try:
+                    sentence_vector[i] = self.to_int[char]
+                except KeyError:
+                    print(string)
             return sentence_vector
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
