@@ -170,6 +170,7 @@ class Data:
                 del (dataset.buckets[key])
 
             dataset.buckets = dataset.buckets.values()
+            self.vocsize = len(self.to_int)
             self.nclasses = self.vocsize + 1
 
     def print_data_stats(self):
