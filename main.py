@@ -104,7 +104,7 @@ class Data:
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
-        vocab = PAD + '\xa0\xc2\n ' + string.lowercase + string.punctuation + string.digits
+        vocab = PAD + '\n ' + string.lowercase + string.punctuation + string.digits
         self.to_char = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
 
@@ -117,6 +117,7 @@ class Data:
                     sentence_vector[i] = self.to_int[char]
                 except KeyError:
                     print(string)
+                    print(char)
             return sentence_vector
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
