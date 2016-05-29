@@ -18,7 +18,7 @@ if __name__ == '__main__':
     counts = {}
     for set_name in ["article", "title"]:
         dictionary, reverse_dictionary = dict(), dict()
-        dict_filename = 'train.' + set_name + '.dict.orig'
+        dict_filename = 'train.' + set_name + '.dict'
         print(dict_filename)
         dict_path = os.path.join(s.data_dir, dict_filename)
         print(dict_path)
