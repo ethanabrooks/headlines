@@ -35,7 +35,7 @@ class Model(object):
                  memory_size=40,
                  n_memory_slots=8,
                  go_code=1):
-        print(self.__dict__())
+        print(self.__dict__)
 
         articles, titles = T.imatrices('articles', 'titles')
         n_article_slots = int(n_memory_slots / 2)  # TODO derive this from an arg
