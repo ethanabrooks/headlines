@@ -10,6 +10,7 @@ import pickle
 from collections import defaultdict
 from collections import namedtuple
 from functools import partial
+from regenerate_dictionary import PAD, GO, OOV
 
 import numpy as np
 import os
@@ -55,14 +56,13 @@ print('-' * 80)
 folder = os.path.basename(__file__).split('.')[0]
 if not os.path.exists(folder):
     os.mkdir(folder)
+dict_filename = 'dict.pkl'
 
 np.random.seed(s.seed)
 random.seed(s.seed)
 
-PAD_VALUE = 0
 NON_ANSWER_VALUE = 1
 ANSWER_VALUE = 2
-GO = '<go>'
 
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
@@ -105,9 +105,6 @@ class Data:
         self.sets = Datasets(Dataset(), Dataset())
         self.to_int = Instance({}, {})
         self.to_word = Instance(defaultdict(list), defaultdict(list))
-        self.vocsize = 0
-        self.num_instances = 0
-        self.num_train = 0
 
         def to_array(string, doc_type):
             if doc_type == 'article':
@@ -117,29 +114,34 @@ class Data:
             if not tokens:
                 length += 1
             size = s.bucket_factor ** get_bucket_idx(length)
-            sentence_vector = np.zeros(size, dtype='int32') + PAD_VALUE
+            sentence_vector = np.zeros(size, dtype='int32') + self.to_int[PAD]
             for i, word in enumerate(tokens):
-                sentence_vector[i] = self.to_int.__getattribute__(doc_type)[word]
+                if word not in self.to_int:
+                    word = OOV
+                sentence_vector[i] = self.to_int[word]
             return sentence_vector
 
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
             for doc_type in Instance._fields:
 
-                def get_filename(extension):
-                    return '.'.join([set_name, doc_type, extension])
+                # if set_name == 'train':
+                #     dict_filename = get_filename('dict')
+                #     with open(dict_filename) as dict_file:
+                #         for line in dict_file:
+                #             word, idx = line.split()
+                #             idx = int(float(idx))
+                #             self.vocsize = max(idx, self.vocsize)
+                #             self.to_int.__getattribute__(doc_type)[word] = idx
+                #             self.to_word.__getattribute__(doc_type)[idx].append(word)
 
-                data_filename = get_filename('txt')
-                if set_name == 'train':
-                    dict_filename = get_filename('dict')
-                    with open(dict_filename) as dict_file:
-                        for line in dict_file:
-                            word, idx = line.split()
-                            idx = int(float(idx))
-                            self.vocsize = max(idx, self.vocsize)
-                            self.to_int.__getattribute__(doc_type)[word] = idx
-                            self.to_word.__getattribute__(doc_type)[idx].append(word)
+                with open(dict_filename) as dict_file:
+                    self.to_int = pickle.load(dict_file)
+                    self.to_word = {idx: word for word, idx in self.to_int.iteritems()}
 
+                data_filename = '.'.join([set_name, doc_type, 'txt'])
+                self.num_instances = 0
+                self.num_train = 0
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
                         self.num_instances += 1
@@ -147,6 +149,8 @@ class Data:
                             self.num_train += 1
                         array = to_array(line, doc_type)
                         dataset.instances.__getattribute__(doc_type).append(array)
+                        if self.num_instances == s.num_instances:
+                            break
 
             dataset.fill_buckets()
             print('Bucket allocation:')
@@ -196,7 +200,6 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
 
 
 def write_predictions_to_file(to_word_dict, dataset_name, targets, predictions):
-
     def to_word(idx):
         word_list = to_word_dict[idx]
         if len(word_list) == 1:
@@ -306,7 +309,7 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                         predictions.append(bucket_predictions.reshape(titles.shape))
                         targets.append(titles)
-            write_predictions_to_file(data.to_word.title, name, predictions, targets)
+            write_predictions_to_file(data.to_word, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, name)
         print_graphs(scores)
