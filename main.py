@@ -60,7 +60,7 @@ if not os.path.exists(folder):
 np.random.seed(s.seed)
 random.seed(s.seed)
 
-PAD = '<pad>'
+PAD = '\x00'
 
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
@@ -104,7 +104,7 @@ class Data:
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
-        vocab = [PAD] + list('\xc2\n ' + string.lowercase + string.punctuation + string.digits)
+        vocab = PAD + '\xa0\xc2\n ' + string.lowercase + string.punctuation + string.digits
         self.to_char = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
 
