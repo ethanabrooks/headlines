@@ -103,7 +103,6 @@ class Data:
     def __init__(self):
 
         self.sets = Datasets(Dataset(), Dataset())
-        self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
         vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
@@ -157,7 +156,8 @@ class Data:
                 del (dataset.buckets[key])
 
             dataset.buckets = dataset.buckets.values()
-            self.nclasses = len(self.to_int) + 1
+            self.nclasses = len(self.to_int)
+            self.vocsize = self.nclasses
 
     def print_data_stats(self):
         print("\nsize of dictionary:", self.vocsize)
