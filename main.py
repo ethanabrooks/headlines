@@ -262,15 +262,15 @@ if __name__ == '__main__':
     data = Data()
     data.print_data_stats()
 
-    if not s.load_vars:
-        rnn = Model(s.hidden_size,
-                    data.nclasses,
-                    data.vocsize,  # num_embeddings
-                    s.embedding_dim,  # embedding_dim
-                    1,  # window_size
-                    s.memory_size,
-                    s.n_memory_slots,
-                    data.to_int[GO])
+    print(data.to_int)
+    rnn = Model(s.hidden_size,
+                data.nclasses,
+                data.vocsize,  # num_embeddings
+                s.embedding_dim,  # embedding_dim
+                1,  # window_size
+                s.memory_size,
+                s.n_memory_slots,
+                data.to_int[GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
