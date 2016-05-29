@@ -9,7 +9,7 @@ parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_f
 special_words = [['<pad>'], ['<go>'], ['<oov>']]
 s = parser.parse_args()
 for set_name in ["article", "title"]:
-    dictionary = defaultdict(list)
+    dictionary = dict()
     reverse_dictionary = dict()
     dict_filename = 'train.' + set_name + '.dict.orig'
     print(dict_filename)

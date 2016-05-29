@@ -105,6 +105,7 @@ class Data:
         self.sets = Datasets(Dataset(), Dataset())
         self.to_int = Instance({}, {})
         self.to_word = Instance(defaultdict(list), defaultdict(list))
+        occurences = dict()
         self.vocsize = 0
         self.num_instances = 0
         self.num_train = 0
