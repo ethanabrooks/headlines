@@ -12,3 +12,8 @@ main/
 plots.html
 train.article.dict.orig
 train.title.dict.orig
+articles.pkl
+bucket_predictions.pkl
+dict.pkl
+new_loss.pkl
+titles.pkl
