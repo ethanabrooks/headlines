@@ -87,11 +87,13 @@ class Dataset:
         self.instances = Instance([], [])
 
     def fill_buckets(self):
-        lengths = map(len, self.instances)
+        lengths = map(len, self.buckets)
         assert lengths[0] == lengths[1]
-        for article, title in zip(*self.instances):
+        new_buckets = defaultdict(list)
+        for article, title in zip(*self.buckets):
             bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
-            self.buckets[bucket_id].append(Instance(article, title))
+            new_buckets[bucket_id].append(Instance(article, title))
+        self.buckets = new_buckets
 
 
 class Data:
@@ -104,10 +106,10 @@ class Data:
 
         self.sets = Datasets(Dataset(), Dataset())
         self.num_instances = 0
-        self.num_train = 0
         vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
         self.to_char = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
+        self.num_train = 0
 
         def to_array(string, doc_type):
             length = len(string) + 1
@@ -124,6 +126,7 @@ class Data:
 
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
+            dataset.buckets = Instance([], [])
             for doc_type in Instance._fields:
 
                 def get_filename(extension):
@@ -134,10 +137,10 @@ class Data:
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
                         self.num_instances += 1
-                        if set_name == 'train':
+                        if set_name == 'train' and doc_type == 'title':
                             self.num_train += 1
                         array = to_array(line, doc_type)
-                        dataset.instances.__getattribute__(doc_type).append(array)
+                        dataset.buckets.__getattribute__(doc_type).append(array)
                         if self.num_instances == s.num_instances:
                             break
 
@@ -218,7 +221,11 @@ def evaluate(predictions, targets):
     """
 
     def to_vector(list_of_arrays):
-        return np.hstack(array.ravel() for array in list_of_arrays)
+        try:
+            return np.hstack(array.ravel() for array in list_of_arrays)
+        except IndexError:
+            with open("list_of_arrays.pkl", 'w') as handle:
+                pickle.dump(list_of_arrays, handle)
 
     predictions, targets = map(to_vector, (predictions, targets))
     return (predictions == targets).mean()
@@ -300,8 +307,8 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                         predictions.append(bucket_predictions.reshape(titles.shape))
                         targets.append(titles)
-            rnn.save(folder)
-            write_predictions_to_file(data.to_char, name, predictions, targets)
-            accuracy = evaluate(predictions, targets)
-            track_scores(scores, accuracy, epoch, name)
+        rnn.save(folder)
+        write_predictions_to_file(data.to_char, name, predictions, targets)
+        accuracy = evaluate(predictions, targets)
+        track_scores(scores, accuracy, epoch, name)
         print_graphs(scores)
