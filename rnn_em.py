@@ -34,7 +34,7 @@ class Model(object):
                  window_size=1,  # TODO: do we want some kind of window?
                  memory_size=40,
                  n_memory_slots=8,
-                 go_code=0):
+                 go_code=1):
 
         articles, titles = T.imatrices('articles', 'titles')
         n_article_slots = int(n_memory_slots / 2)  # TODO derive this from an arg
@@ -204,10 +204,10 @@ class Model(object):
         read_article = partial(recurrence, is_article=True)
         i0 = T.constant(0, dtype=int32)
         outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
-        [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
-                                            outputs_info=outputs_info,
-                                            n_steps=articles.shape[1],
-                                            name='read_scan')
+        [_, y_article, _, h, w, M], _ = theano.scan(fn=read_article,
+                                                    outputs_info=outputs_info,
+                                                    n_steps=articles.shape[1],
+                                                    name='read_scan')
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
@@ -253,6 +253,7 @@ class Model(object):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(self.params, handle)
             self.__dict__.update(params)
+
 
 if __name__ == '__main__':
     rnn = Model()

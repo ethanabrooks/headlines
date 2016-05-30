@@ -24,13 +24,13 @@ from tabulate import tabulate
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_instances', type=int, default=100000,
                     help='number of instances to use in Jeopardy dataset')
-parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
-parser.add_argument('--memory_size', type=int, default=40, help='Memory size')
-parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding size')
-parser.add_argument('--n_memory_slots', type=int, default=100, help='Memory slots')
+parser.add_argument('--hidden_size', type=int, default=40, help='Hidden size')
+parser.add_argument('--memory_size', type=int, default=20, help='Memory size')
+parser.add_argument('--embedding_dim', type=int, default=30, help='Embedding size')
+parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
-parser.add_argument('--batch_size', type=int, default=2,
+parser.add_argument('--batch_size', type=int, default=80,
                     help='Number of backprop through time steps')
 parser.add_argument('--window_size', type=int, default=7,
                     help='Number of words in context window')
@@ -61,8 +61,6 @@ dict_filename = 'dict.pkl'
 np.random.seed(s.seed)
 random.seed(s.seed)
 
-NON_ANSWER_VALUE = 1
-ANSWER_VALUE = 2
 
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
@@ -87,11 +85,13 @@ class Dataset:
         self.instances = Instance([], [])
 
     def fill_buckets(self):
-        lengths = map(len, self.instances)
+        lengths = map(len, self.buckets)
         assert lengths[0] == lengths[1]
-        for article, title in zip(*self.instances):
+        new_buckets = defaultdict(list)
+        for article, title in zip(*self.buckets):
             bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
-            self.buckets[bucket_id].append(Instance(article, title))
+            new_buckets[bucket_id].append(Instance(article, title))
+        self.buckets = new_buckets
 
 
 class Data:
@@ -103,13 +103,14 @@ class Data:
     def __init__(self):
 
         self.sets = Datasets(Dataset(), Dataset())
+        self.num_train = 0
         self.to_int = Instance({}, {})
         self.to_word = Instance(defaultdict(list), defaultdict(list))
 
         def to_array(string, doc_type):
-            if doc_type == 'article':
-                string = GO + ' ' + string
             tokens = string.split()
+            if doc_type == 'title':
+                tokens = [GO] + tokens
             length = len(tokens)
             if not tokens:
                 length += 1
@@ -123,6 +124,7 @@ class Data:
 
         for set_name in Datasets._fields:
             dataset = self.sets.__getattribute__(set_name)
+            dataset.buckets = Instance([], [])
             for doc_type in Instance._fields:
 
                 # if set_name == 'train':
@@ -141,14 +143,13 @@ class Data:
 
                 data_filename = '.'.join([set_name, doc_type, 'txt'])
                 self.num_instances = 0
-                self.num_train = 0
                 with open(os.path.join(s.data_dir, data_filename)) as data_file:
                     for line in data_file:
                         self.num_instances += 1
-                        if set_name == 'train':
+                        if set_name == 'train' and doc_type == 'title':
                             self.num_train += 1
                         array = to_array(line, doc_type)
-                        dataset.instances.__getattribute__(doc_type).append(array)
+                        dataset.buckets.__getattribute__(doc_type).append(array)
                         if self.num_instances == s.num_instances:
                             break
 
@@ -161,6 +162,7 @@ class Data:
                 num_instances = len(bucket)
                 if num_instances < 10:
                     delete.append(key)
+                    self.num_train -= len(bucket)
                 else:
                     print(key, num_instances)
 
@@ -170,8 +172,8 @@ class Data:
                 del (dataset.buckets[key])
 
             dataset.buckets = dataset.buckets.values()
-            self.vocsize = len(self.to_int)
-            self.nclasses = self.vocsize + 1
+            self.nclasses = len(self.to_int)
+            self.vocsize = self.nclasses
 
     def print_data_stats(self):
         print("\nsize of dictionary:", self.vocsize)
@@ -210,23 +212,15 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     sys.stdout.flush()
 
 
-def write_predictions_to_file(to_word_dict, dataset_name, targets, predictions):
-    def to_word(idx):
-        word_list = to_word_dict[idx]
-        if len(word_list) == 1:
-            return word_list[0]
-        if len(word_list) < 5:
-            return '{' + '|'.join(word_list) + '}'
-        else:
-            return '<oov>'
-
+def write_predictions_to_file(to_char, dataset_name, targets, predictions):
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = ' '.join([to_word(idx) for idx in arr.ravel()])
+                    values = ' '.join([to_char[idx] for idx in arr.ravel()
+                                      if to_char[idx] != PAD])  # TODO: change to_char to to_word
                     handle.write(label + values + '\n')
 
 
@@ -281,20 +275,20 @@ if __name__ == '__main__':
     data = Data()
     data.print_data_stats()
 
-    if not s.load_vars:
-        rnn = Model(s.hidden_size,
-                    data.nclasses,
-                    data.vocsize,  # num_embeddings
-                    s.embedding_dim,  # embedding_dim
-                    1,  # window_size
-                    s.memory_size,
-                    s.n_memory_slots)
+    rnn = Model(s.hidden_size,
+                data.nclasses,
+                data.vocsize,  # num_embeddings
+                s.embedding_dim,  # embedding_dim
+                1,  # window_size
+                s.memory_size,
+                s.n_memory_slots,
+                data.to_int[GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
-        print('\n###\t{:10}{:10}{:10}{:10}###'
-              .format('epoch', 'progress', 'loss', 'runtime'))
+        print('\n###\t{:10}{:10}{:10}{:10}{:10}###'
+              .format('epoch', 'progress', 'loss', 'runtime', 'ETA'))
         start_time = time.time()
         for name in list(Datasets._fields):
             random_predictions, predictions, targets = [], [], []
@@ -318,10 +312,10 @@ if __name__ == '__main__':
                                        start_time)
                     else:
                         bucket_predictions = rnn.infer(articles, titles)
-                        predictions.append(bucket_predictions.reshape(titles.shape))
-                        targets.append(titles)
+                    predictions.append(bucket_predictions.reshape(titles.shape))
+                    targets.append(titles)
             rnn.save(folder)
             write_predictions_to_file(data.to_word, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, name)
-        print_graphs(scores)
+            print_graphs(scores)
