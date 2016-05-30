@@ -105,9 +105,9 @@ class Model(object):
         self.params = [eval('self.' + name) for name in self.names]
 
         def recurrence(i, h_im1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
-            # M_a = Print('M_a', ['shape'])(M_a)
-            # w_a = Print('w_a', ['shape'])(w_a)
-            # h_im1 = Print('h_im1', ['shape'])(h_im1)
+            M_a = Print('M_a', ['shape'])(M_a)
+            w_a = Print('w_a', ['shape'])(w_a)
+            h_im1 = Print('h_im1', ['shape'])(h_im1)
             """
             notes
             Headers from paper in all caps
@@ -137,6 +137,7 @@ class Model(object):
                 document = articles if is_article else titles  # [instances, bucket_width]
                 word_idxs = document[:, i]  # [instances, 1]
             x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
+            x_i = Print('x_i', ['shape'])(x_i)
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
@@ -146,29 +147,42 @@ class Model(object):
                 w_read = T.concatenate([w_a, w_t], axis=1)  # [instances, n_title_slots]
 
             # eqn 15
+            w_read = Print('w_read', ['shape'])(w_read)
+            M_read = Print('M_read', ['shape'])(M_read)
             c = T.batched_dot(M_read, w_read)  # [instances, memory_size]
+            c = Print('c', ['shape'])(c)
 
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
+                w = Print('w', ['shape'])(w)
+                M = Print('M', ['shape'])(M)
+                bg = Print('bg', ['shape'])(bg)
+                Wg = Print('Wg', ['shape'])(Wg)
                 g = T.nnet.sigmoid(T.dot(x_i, Wg) + bg)  # [instances, mem]
+                g = Print('g', ['shape'])(g)
 
                 # eqn 11
                 k = T.dot(h_im1, self.Wk) + self.bk  # [instances, memory_size]
+                k = Print('k', ['shape'])(k)
 
                 # eqn 13
                 beta = T.dot(h_im1, self.Wb) + self.bb
                 beta = T.log(1 + T.exp(beta))
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
+                beta = Print('beta', ['shape'])(beta)
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
+                w_hat = Print('w_hat', ['shape'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
 
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
+            w_a = Print('w_a', ['shape'])(w_a)
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
+                w_t = Print('w_t', ['shape'])(w_t)
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
@@ -176,14 +190,22 @@ class Model(object):
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
+            y = Print('y', ['shape'])(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
+                M_update = Print('M_update', ['shape'])(M_update)
+                w_update = Print('w_update', ['shape'])(w_update)
+                be = Print('be', ['shape'])(be)
+                We = Print('We', ['shape'])(We)
                 # eqn 17
                 e = T.nnet.sigmoid(T.dot(h_im1, We) + be)  # [instances, mem]
+                e = Print('e', ['shape'])(e)
                 f = 1. - w_update * e  # [instances, mem]
+                f = Print('f', ['shape'])(f)
 
                 # eqn 16
+                v = Print('v', ['shape'])(v)
                 v = T.dot(h, self.Wv) + self.bv  # [instances, memory_size]
 
                 # need to add broadcast layers for memory update
@@ -195,24 +217,30 @@ class Model(object):
                 return M_update * f + T.batched_dot(v, u) * (1 - f)  # [instances, memory_size, mem]
 
             M_a = update_memory(self.We_a, self.be_a, w_a, M_a)
+            M_a = Print('M_a', ['shape'])(M_a)
             attention_and_memory = [w_a, M_a]
             if not is_article:
                 M_t = update_memory(self.We_t, self.be_t, w_t, M_t)
+                M_t = Print('M_t', ['shape'])(M_t)
                 attention_and_memory += [w_t, M_t]
 
             y_max = y.argmax(axis=1).astype(int32)
+            y_max = Print('y_max', ['shape'])(y_max)
             next_idxs = i + 1 if is_training or is_article else y_max
             return [y, y_max, next_idxs, h] + attention_and_memory
 
         read_article = partial(recurrence, is_article=True)
         i0 = T.constant(0, dtype=int32)
         outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
-        [_, y_article, _, h, w, M], _ = theano.scan(fn=read_article,
-                                                    outputs_info=outputs_info,
-                                                    n_steps=articles.shape[1],
-                                                    name='read_scan')
+        [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
+                                            outputs_info=outputs_info,
+                                            n_steps=articles.shape[1],
+                                            name='read_scan')
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
+        M = Print('M', ['shape'])(M)
+        w = Print('w', ['shape'])(w)
+        h = Print('h', ['shape'])(h)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
         outputs_info.extend([self.w_t, self.M_t])
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
