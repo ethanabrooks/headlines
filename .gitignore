@@ -17,3 +17,5 @@ bucket_predictions.pkl
 dict.pkl
 new_loss.pkl
 titles.pkl
+test/
+train/
