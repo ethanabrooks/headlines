@@ -30,7 +30,7 @@ parser.add_argument('--embedding_dim', type=int, default=30, help='Embedding siz
 parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
-parser.add_argument('--batch_size', type=int, default=1024,
+parser.add_argument('--batch_size', type=int, default=80,
                     help='Number of backprop through time steps')
 parser.add_argument('--window_size', type=int, default=7,
                     help='Number of words in context window')
@@ -210,7 +210,8 @@ def write_predictions_to_file(to_char, dataset_name, targets, predictions):
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = ''.join([to_char[idx] for idx in arr.ravel()])
+                    values = ''.join([to_char[idx] for idx in arr.ravel()
+                                      if to_char[idx] != PAD])
                     handle.write(label + values + '\n')
 
 
@@ -308,8 +309,8 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                         predictions.append(bucket_predictions.reshape(titles.shape))
                         targets.append(titles)
-        rnn.save(folder)
-        write_predictions_to_file(data.to_char, name, predictions, targets)
-        accuracy = evaluate(predictions, targets)
-        track_scores(scores, accuracy, epoch, name)
-        print_graphs(scores)
+            rnn.save(folder)
+            write_predictions_to_file(data.to_char, name, predictions, targets)
+            accuracy = evaluate(predictions, targets)
+            track_scores(scores, accuracy, epoch, name)
+            print_graphs(scores)
