@@ -205,8 +205,8 @@ class Model(object):
                 f = Print('f', ['shape'])(f)
 
                 # eqn 16
-                v = Print('v', ['shape'])(v)
                 v = T.dot(h, self.Wv) + self.bv  # [instances, memory_size]
+                v = Print('v', ['shape'])(v)
 
                 # need to add broadcast layers for memory update
                 f = f.dimshuffle(0, 'x', 1)  # [instances, 1, mem]
