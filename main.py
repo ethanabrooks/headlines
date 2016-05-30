@@ -22,8 +22,6 @@ from tabulate import tabulate
 # from spacy import English
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num_instances', type=int, default=100000,
-                    help='number of instances to use in Jeopardy dataset')
 parser.add_argument('--hidden_size', type=int, default=40, help='Hidden size')
 parser.add_argument('--memory_size', type=int, default=20, help='Memory size')
 parser.add_argument('--embedding_dim', type=int, default=30, help='Embedding size')
@@ -43,10 +41,6 @@ parser.add_argument('--dataset', type=str, default='jeopardy',
                     help='select dataset [atis|Jeopardy]')
 parser.add_argument('--plots', type=str, default='plots',
                     help='file for saving Bokeh plots output')
-parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
-                    help='path to data')
-parser.add_argument('--bucket_factor', type=int, default=4,
-                    help='factor by which to multiply exponent when determining bucket size')
 
 s = parser.parse_args()
 print(s)
@@ -59,10 +53,6 @@ if not os.path.exists(folder):
 
 np.random.seed(s.seed)
 random.seed(s.seed)
-
-PAD = chr(0)
-GO = chr(1)
-OOV = chr(2)
 
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
