@@ -24,10 +24,10 @@ from tabulate import tabulate
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_instances', type=int, default=100000,
                     help='number of instances to use in Jeopardy dataset')
-parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
-parser.add_argument('--memory_size', type=int, default=40, help='Memory size')
-parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding size')
-parser.add_argument('--n_memory_slots', type=int, default=100, help='Memory slots')
+parser.add_argument('--hidden_size', type=int, default=40, help='Hidden size')
+parser.add_argument('--memory_size', type=int, default=20, help='Memory size')
+parser.add_argument('--embedding_dim', type=int, default=30, help='Embedding size')
+parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
 parser.add_argument('--batch_size', type=int, default=1024,
@@ -153,6 +153,7 @@ class Data:
                 num_instances = len(bucket)
                 if num_instances < 10:
                     delete.append(key)
+                    self.num_train -= len(bucket)
                 else:
                     print(key, num_instances)
 

@@ -105,9 +105,6 @@ class Model(object):
         self.params = [eval('self.' + name) for name in self.names]
 
         def recurrence(i, h_im1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
-            # M_a = Print('M_a', ['shape'])(M_a)
-            # w_a = Print('w_a', ['shape'])(w_a)
-            # h_im1 = Print('h_im1', ['shape'])(h_im1)
             """
             notes
             Headers from paper in all caps
