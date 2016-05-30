@@ -307,8 +307,8 @@ if __name__ == '__main__':
                                        start_time)
                     else:
                         bucket_predictions = rnn.infer(articles, titles)
-                        predictions.append(bucket_predictions.reshape(titles.shape))
-                        targets.append(titles)
+                    predictions.append(bucket_predictions.reshape(titles.shape))
+                    targets.append(titles)
             rnn.save(folder)
             write_predictions_to_file(data.to_char, name, predictions, targets)
             accuracy = evaluate(predictions, targets)
