@@ -95,13 +95,13 @@ if __name__ == '__main__':
     Collects data and assigns to different datasets.
     """
     data = Data()
+    data.num_train = 0
     for set_name in Datasets._fields:
         if not os.path.exists(set_name):
             os.mkdir(set_name)
         instances = Instance([], [])
         for doc_type in Instance._fields:
             num_instances = 0
-            data.num_train = 0
             data_filename = '.'.join([set_name, doc_type, 'txt'])
             with open(os.path.join(s.data_dir, data_filename)) as data_file:
                 for line in data_file:
