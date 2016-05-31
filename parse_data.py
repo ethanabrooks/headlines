@@ -10,7 +10,7 @@ parser.add_argument('--num_instances', type=int, default=100000,
                     help='number of instances to use in Jeopardy dataset')
 parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
                     help='path to data')
-parser.add_argument('--bucket_factor', type=int, default=4,
+parser.add_argument('--bucket_factor', type=int, default=2,
                     help='factor by which to multiply exponent when determining bucket size')
 
 s = parser.parse_args()
