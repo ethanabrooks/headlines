@@ -17,6 +17,7 @@ s = parser.parse_args()
 print(s)
 print('-' * 80)
 
+os.environ["THEANO_FLAGS"] = "device=gpu"
 from main import PAD, GO, OOV, DATA_OBJ_FILE
 
 
