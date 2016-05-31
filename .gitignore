@@ -19,3 +19,9 @@ new_loss.pkl
 titles.pkl
 test/
 train/
+articles.pkl
+bucket_predictions.pkl
+data.pkl
+dict.pkl
+new_loss.pkl
+titles.pkl
