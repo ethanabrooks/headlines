@@ -117,5 +117,7 @@ if __name__ == '__main__':
         save_buckets(data.num_train, buckets, set_name)
         data.nclasses = len(data.to_int)
         data.vocsize = data.nclasses
+        print("The number of training instances is ", data.num_train)
+        print("The number of classes is ", data.nclasses)
         with open(DATA_OBJ_FILE, 'w') as handle:
             pickle.dump(data, handle)
