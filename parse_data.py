@@ -16,11 +16,7 @@ parser.add_argument('--bucket_factor', type=int, default=4,
 
 s = parser.parse_args()
 
-""" Globals """
-
-PAD = chr(0)
-GO = chr(1)
-OOV = chr(2)
+from main import PAD, GO, OOV, DATA_OBJ_FILE
 
 
 def get_bucket_idx(length):
@@ -98,7 +94,6 @@ if __name__ == '__main__':
     Collects data and assigns to different datasets.
     """
     data = Data()
-
     for set_name in Datasets._fields:
         if not os.path.exists(set_name):
             os.mkdir(set_name)
@@ -121,5 +116,5 @@ if __name__ == '__main__':
         save_buckets(num_train, buckets, set_name)
         data.nclasses = len(data.to_int)
         data.vocsize = data.nclasses
-        with open('data.pkl', 'w') as handle:
+        with open(DATA_OBJ_FILE, 'w') as handle:
             pickle.dump(data, handle)

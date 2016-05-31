@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 import pickle
-from collections import defaultdict
 from collections import namedtuple
 from functools import partial
 
@@ -16,49 +15,29 @@ import numpy as np
 import os
 from bokeh.io import output_file, vplot, save
 from bokeh.plotting import figure
+
 from rnn_em import Model
 from tabulate import tabulate
 
 # from spacy import English
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--hidden_size', type=int, default=40, help='Hidden size')
-parser.add_argument('--memory_size', type=int, default=20, help='Memory size')
-parser.add_argument('--embedding_dim', type=int, default=30, help='Embedding size')
-parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
-parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
-parser.add_argument('--seed', type=int, default=345, help='Seed')
-parser.add_argument('--batch_size', type=int, default=80,
-                    help='Number of backprop through time steps')
-parser.add_argument('--window_size', type=int, default=7,
-                    help='Number of words in context window')
-parser.add_argument('--learn_rate', type=float, default=0.0627142536696559,
-                    help='Learning rate')
-parser.add_argument('--verbose', help='Verbose or not', action='store_true')
-parser.add_argument('--save_vars', help='pickle certain variables', action='store_true')
-parser.add_argument('--load_vars', help='pickle.load certain variables', action='store_true')
-parser.add_argument('--dataset', type=str, default='jeopardy',
-                    help='select dataset [atis|Jeopardy]')
-parser.add_argument('--plots', type=str, default='plots',
-                    help='file for saving Bokeh plots output')
-
-s = parser.parse_args()
-print(s)
-print('-' * 80)
 
 """ Globals """
 folder = os.path.basename(__file__).split('.')[0]
 if not os.path.exists(folder):
     os.mkdir(folder)
 
-np.random.seed(s.seed)
-random.seed(s.seed)
+PAD = chr(0)
+GO = chr(1)
+OOV = chr(2)
+DATA_OBJ_FILE = 'data.pkl'
 
-assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 
 
-def get_bucket_idx(length):
-    return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
+class Data:
+    def __init__(self):
+        vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
+        self.to_char = dict(enumerate(vocab))
+        self.to_int = {char: i for i, char in enumerate(vocab)}
 
 
 """ namedtuples """
@@ -68,105 +47,17 @@ Datasets = namedtuple("datasets", "train test")
 ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
 Score = namedtuple("score", "value epoch")
 
-""" classes """
+""" functions """
 
 
-class Dataset:
-    def __init__(self):
-        self.buckets = defaultdict(list)
-        self.instances = Instance([], [])
-
-    def fill_buckets(self):
-        lengths = map(len, self.buckets)
-        assert lengths[0] == lengths[1]
-        new_buckets = defaultdict(list)
-        for article, title in zip(*self.buckets):
-            bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
-            new_buckets[bucket_id].append(Instance(article, title))
-        self.buckets = new_buckets
-
-
-class Data:
-    """
-    contains global data parameters.
-    Collects data and assigns to different datasets.
-    """
-
-    def __init__(self):
-
-        self.sets = Datasets(Dataset(), Dataset())
-        self.num_instances = 0
-        vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
-        self.to_char = dict(enumerate(vocab))
-        self.to_int = {char: i for i, char in enumerate(vocab)}
-        self.num_train = 0
-
-        def to_array(string, doc_type):
-            length = len(string) + 1
-            size = s.bucket_factor ** get_bucket_idx(length)
-            if doc_type == 'title':
-                string = GO + string
-            sentence_vector = np.zeros(size, dtype='int32') + self.to_int[PAD]
-            for i, char in enumerate(string):
-                if char not in self.to_int:
-                    char = OOV
-                char_code = self.to_int[char]
-                sentence_vector[i] = char_code
-            return sentence_vector
-
-        for set_name in Datasets._fields:
-            dataset = self.sets.__getattribute__(set_name)
-            dataset.buckets = Instance([], [])
-            for doc_type in Instance._fields:
-
-                def get_filename(extension):
-                    return '.'.join([set_name, doc_type, extension])
-
-                data_filename = get_filename('txt')
-                self.num_instances = 0
-                with open(os.path.join(s.data_dir, data_filename)) as data_file:
-                    for line in data_file:
-                        self.num_instances += 1
-                        if set_name == 'train' and doc_type == 'title':
-                            self.num_train += 1
-                        array = to_array(line, doc_type)
-                        dataset.buckets.__getattribute__(doc_type).append(array)
-                        if self.num_instances == s.num_instances:
-                            break
-
-            dataset.fill_buckets()
-            print('Bucket allocation:')
-            delete = []
-            print('\nNumber of buckets: ', len(dataset.buckets))
-            for key in dataset.buckets:
-                bucket = dataset.buckets[key]
-                num_instances = len(bucket)
-                if num_instances < 10:
-                    delete.append(key)
-                    self.num_train -= len(bucket)
-                else:
-                    print(key, num_instances)
-
-                dataset.buckets[key] = Instance(*map(np.array, zip(*bucket)))
-
-            for key in delete:
-                del (dataset.buckets[key])
-
-            dataset.buckets = dataset.buckets.values()
-            self.nclasses = len(self.to_int)
-            self.vocsize = self.nclasses
-
-    def print_data_stats(self):
-        print("\nsize of dictionary:", self.vocsize)
-        print("number of instances:", self.num_instances)
-        print("size of training set:", self.num_train)
+def get_bucket_idx(length):
+    return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
 
 
 def get_batches(bucket):
-    num_batches = bucket.article.shape[0] // s.batch_size + 1
+    num_batches = bucket[0].shape[0] // s.batch_size + 1
     split = partial(np.array_split, indices_or_sections=num_batches)
-    return zip(*map(split, (bucket.article,
-                            bucket.title)))
+    return zip(*map(split, bucket))
 
 
 def running_average(loss, new_loss, instances_processed, num_instances):
@@ -256,9 +147,37 @@ def print_graphs(scores):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--hidden_size', type=int, default=40, help='Hidden size')
+    parser.add_argument('--memory_size', type=int, default=20, help='Memory size')
+    parser.add_argument('--embedding_dim', type=int, default=30, help='Embedding size')
+    parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
+    parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
+    parser.add_argument('--seed', type=int, default=345, help='Seed')
+    parser.add_argument('--batch_size', type=int, default=80,
+                        help='Number of backprop through time steps')
+    parser.add_argument('--window_size', type=int, default=7,
+                        help='Number of words in context window')
+    parser.add_argument('--learn_rate', type=float, default=0.0627142536696559,
+                        help='Learning rate')
+    parser.add_argument('--verbose', help='Verbose or not', action='store_true')
+    parser.add_argument('--save_vars', help='pickle certain variables', action='store_true')
+    parser.add_argument('--load_vars', help='pickle.load certain variables', action='store_true')
+    parser.add_argument('--dataset', type=str, default='jeopardy',
+                        help='select dataset [atis|Jeopardy]')
+    parser.add_argument('--plots', type=str, default='plots',
+                        help='file for saving Bokeh plots output')
 
+    s = parser.parse_args()
+    assert s.window_size % 2 == 1, "`window_size` must be an odd number."
+    print(s)
+    print('-' * 80)
+
+    np.random.seed(s.seed)
+    random.seed(s.seed)
     data = Data()
-    data.print_data_stats()
+    with open(DATA_OBJ_FILE) as handle:
+        data = pickle.load(handle)
 
     rnn = Model(s.hidden_size,
                 data.nclasses,
@@ -275,14 +194,19 @@ if __name__ == '__main__':
         print('\n###\t{:10}{:10}{:10}{:10}{:10}###'
               .format('epoch', 'progress', 'loss', 'runtime', 'ETA'))
         start_time = time.time()
-        for name in list(Datasets._fields):
-            random_predictions, predictions, targets = [], [], []
+        for set_name in list(Datasets._fields):
+            predictions, targets = [], []
             instances_processed = 0
             loss = None
-            for bucket in data.sets.__getattribute__(name).buckets:
-                for articles, titles in get_batches(bucket):
+            for bucket_dir in os.listdir(set_name):
+                path = os.path.join(set_name, bucket_dir)
+                filepaths = [os.path.join(path, name + '.npy')
+                             for name in Instance._fields]
+                instances = map(np.load, filepaths)
+                assert instances[0].shape[0] == instances[1].shape[0]
+                for articles, titles in get_batches(instances):
 
-                    if name == 'train':
+                    if set_name == 'train':
                         bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
@@ -300,7 +224,7 @@ if __name__ == '__main__':
                     predictions.append(bucket_predictions.reshape(titles.shape))
                     targets.append(titles)
             rnn.save(folder)
-            write_predictions_to_file(data.to_char, name, predictions, targets)
+            write_predictions_to_file(data.to_char, set_name, predictions, targets)
             accuracy = evaluate(predictions, targets)
-            track_scores(scores, accuracy, epoch, name)
+            track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)
