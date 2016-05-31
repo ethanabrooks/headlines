@@ -208,9 +208,6 @@ class Model(object):
                                             outputs_info=outputs_info,
                                             n_steps=articles.shape[1],
                                             name='read_scan')
-        M = Print('M', ['shape'])(M)
-        w = Print('w', ['shape'])(w)
-        h = Print('h', ['shape'])(h)
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
@@ -220,8 +217,6 @@ class Model(object):
                                                       n_steps=titles.shape[1],
                                                       name='train_scan')
 
-        y_max = Print('y_max', ['shape'])(y_max)
-        y = Print('y', ['shape'])(y)
 
         # loss and updates
         y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
