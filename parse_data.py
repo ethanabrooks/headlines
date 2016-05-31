@@ -14,6 +14,8 @@ parser.add_argument('--bucket_factor', type=int, default=4,
                     help='factor by which to multiply exponent when determining bucket size')
 
 s = parser.parse_args()
+print(s)
+print('-' * 80)
 
 from main import PAD, GO, OOV, DATA_OBJ_FILE
 
@@ -99,20 +101,20 @@ if __name__ == '__main__':
         instances = Instance([], [])
         for doc_type in Instance._fields:
             num_instances = 0
-            num_train = 0
+            data.num_train = 0
             data_filename = '.'.join([set_name, doc_type, 'txt'])
             with open(os.path.join(s.data_dir, data_filename)) as data_file:
                 for line in data_file:
                     num_instances += 1
                     if set_name == 'train':
-                        num_train += 1
+                        data.num_train += 1
                     array = to_array(line, doc_type)
                     instances.__getattribute__(doc_type).append(array)
                     if num_instances == s.num_instances:
                         break
 
         buckets = fill_buckets(instances)
-        save_buckets(num_train, buckets, set_name)
+        save_buckets(data.num_train, buckets, set_name)
         data.nclasses = len(data.to_int)
         data.vocsize = data.nclasses
         with open(DATA_OBJ_FILE, 'w') as handle:
