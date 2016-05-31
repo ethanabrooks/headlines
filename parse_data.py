@@ -5,10 +5,6 @@ import pickle
 
 import numpy as np
 from collections import defaultdict, namedtuple
-
-import theano
-theano.config.device = 'cpu'
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_instances', type=int, default=100000,
                     help='number of instances to use in Jeopardy dataset')
