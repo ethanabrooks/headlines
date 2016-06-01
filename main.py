@@ -108,7 +108,7 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     elapsed_time = time.time() - start_time
     eta = elapsed_time / progress if progress else None
     elapsed_time, eta = map(format_time, (elapsed_time, eta))
-    print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10}{:<10}###'
+    print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}###'
           .format(epoch, progress, loss, elapsed_time, eta), end='')
     sys.stdout.flush()
 
