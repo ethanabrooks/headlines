@@ -26,13 +26,15 @@ folder = os.path.basename(__file__).split('.')[0]
 if not os.path.exists(folder):
     os.mkdir(folder)
 
+PAD = '<PAD>'
+GO = '<GO>'
+OOV = '<OOV>'
+DATA_OBJ_FILE = 'data.pkl'
 
 
 class Data:
     def __init__(self):
-        vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
-        self.to_char = dict(enumerate(vocab))
-        self.to_int = {char: i for i, char in enumerate(vocab)}
+        pass
 
 
 """ namedtuples """
@@ -174,14 +176,14 @@ if __name__ == '__main__':
     with open(DATA_OBJ_FILE) as handle:
         data = pickle.load(handle)
 
-    rnn = Model(s.hidden_size,
-                data.nclasses,
-                data.vocsize,  # num_embeddings
-                s.embedding_dim,  # embedding_dim
-                1,  # window_size
-                s.memory_size,
-                s.n_memory_slots,
-                data.to_int[GO])
+    # rnn = Model(s.hidden_size,
+    #             data.nclasses,
+    #             data.vocsize,  # num_embeddings
+    #             s.embedding_dim,  # embedding_dim
+    #             1,  # window_size
+    #             s.memory_size,
+    #             s.n_memory_slots,
+    #             data.to_int[GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}

@@ -1,10 +1,13 @@
+from __future__ import print_function
+
 import argparse
-import string
 import os
 import pickle
 
 import numpy as np
 from collections import defaultdict, namedtuple
+
+import shutil
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_instances', type=int, default=100000,
@@ -90,7 +93,6 @@ def fill_buckets(instances):
 
 
 def save_buckets(num_train, buckets, set_name):
-    print('Bucket allocation:')
     print('\nNumber of buckets: ', len(buckets))
     for key in buckets:
         bucket = buckets[key]
@@ -117,9 +119,11 @@ if __name__ == '__main__':
     """
     data = Data()
     data.num_train = 0
+    print('Bucket allocation:')
     for set_name in Datasets._fields:
-        if not os.path.exists(set_name):
-            os.mkdir(set_name)
+        if os.path.exists(set_name):
+            shutil.rmtree(set_name)
+        os.mkdir(set_name)
         instances = Instance([], [])
         for doc_type in Instance._fields:
             data.num_instances = 0
@@ -137,9 +141,9 @@ if __name__ == '__main__':
         buckets = fill_buckets(instances)
         save_buckets(data.num_train, buckets, set_name)
 
-        print("\nsize of dictionary:", data.vocsize)
-        print("number of instances:", data.num_instances)
-        print("size of training set:", data.num_train)
+    print("\nsize of dictionary:", data.vocsize)
+    print("number of instances:", data.num_instances)
+    print("size of training set:", data.num_train)
 
-        with open(DATA_OBJ_FILE, 'w') as handle:
-            pickle.dump(data, handle)
+    with open(DATA_OBJ_FILE, 'w') as handle:
+        pickle.dump(data, handle)
