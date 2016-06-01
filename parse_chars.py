@@ -38,6 +38,9 @@ Datasets = namedtuple("datasets", "train test")
 ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
 Score = namedtuple("score", "value epoch")
 
+class Data:
+    def __init__(self):
+        pass
 
 """ functions """
 
