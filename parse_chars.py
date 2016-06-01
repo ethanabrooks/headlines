@@ -9,18 +9,6 @@ from collections import defaultdict, namedtuple
 
 from print_data_stats import print_stats
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--num_instances', type=int, default=100000,
-                    help='number of instances to use in Jeopardy dataset')
-parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
-                    help='path to data')
-parser.add_argument('--bucket_factor', type=int, default=2,
-                    help='factor by which to multiply exponent when determining bucket size')
-
-s = parser.parse_args()
-print(s)
-print('-' * 80)
-
 os.environ["THEANO_FLAGS"] = "device=gpu"
 PAD = chr(0)
 GO = chr(1)
@@ -92,10 +80,19 @@ def save_buckets(num_train, buckets, set_name):
 
 
 if __name__ == '__main__':
-    """
-    contains global data parameters.
-    Collects data and assigns to different datasets.
-    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num_instances', type=int, default=100000,
+                        help='number of instances to use in Jeopardy dataset')
+    parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
+                        help='path to data')
+    parser.add_argument('--bucket_factor', type=int, default=2,
+                        help='factor by which to multiply exponent when determining bucket size')
+
+    s = parser.parse_args()
+    print(s)
+    print('-' * 80)
+
     data = Data()
     vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
     data.to_char = dict(enumerate(vocab))

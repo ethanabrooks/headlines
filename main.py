@@ -17,6 +17,7 @@ from bokeh.plotting import figure
 
 from rnn_em import Model
 from tabulate import tabulate
+from parse_chars import PAD, GO, DATA_OBJ_FILE
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
@@ -43,8 +44,6 @@ s = parser.parse_args()
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 print(s)
 print('-' * 80)
-
-from parse_chars import PAD, GO, DATA_OBJ_FILE
 
 
 # from spacy import English
