@@ -21,7 +21,10 @@ print(s)
 print('-' * 80)
 
 os.environ["THEANO_FLAGS"] = "device=gpu"
-from main import PAD, GO, OOV, DATA_OBJ_FILE, Data
+PAD = '<PAD>'
+GO = '<GO>'
+OOV = '<OOV>'
+DATA_OBJ_FILE = 'data.pkl'
 
 
 def get_bucket_idx(length):

@@ -88,7 +88,7 @@ class Model(object):
             setattr(self, key, random_shared(randoms[key]))
 
         for key in zeros:
-            # create an attribute with associated shape and values = 0
+            # create an attribute with associated shape and values equal to 0
             setattr(self, key, zeros_shared(zeros[key]))
 
         self.names = randoms.keys() + zeros.keys()

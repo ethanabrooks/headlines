@@ -10,6 +10,7 @@ import time
 import pickle
 from collections import namedtuple
 from functools import partial
+from parse_chars import PAD, GO, DATA_OBJ_FILE
 
 import numpy as np
 import os
@@ -25,11 +26,6 @@ from tabulate import tabulate
 folder = os.path.basename(__file__).split('.')[0]
 if not os.path.exists(folder):
     os.mkdir(folder)
-
-PAD = '<PAD>'
-GO = '<GO>'
-OOV = '<OOV>'
-DATA_OBJ_FILE = 'data.pkl'
 
 
 class Data:
