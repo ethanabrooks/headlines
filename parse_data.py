@@ -5,9 +5,12 @@ import pickle
 
 import numpy as np
 from collections import defaultdict, namedtuple
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_instances', type=int, default=100000,
                     help='number of instances to use in Jeopardy dataset')
+parser.add_argument('--size_vocab', type=int, default=10000,
+                    help='number of words in vocab')
 parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
                     help='path to data')
 parser.add_argument('--bucket_factor', type=int, default=2,
@@ -37,25 +40,42 @@ Score = namedtuple("score", "value epoch")
 
 class Data:
     def __init__(self):
-        vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
-        self.to_char = dict(enumerate(vocab))
-        self.to_int = {char: i for i, char in enumerate(vocab)}
+        special_words = [PAD, GO, OOV]
+        counts = {}
+        for set_name in Instance._fields:
+            dict_filename = 'train.' + set_name + '.dict'
+            dict_path = os.path.join(s.data_dir, dict_filename)
+            with open(dict_path) as handle:
+                for line in handle:
+                    word, count = line.split()
+                    counts[word] = float(count)
+
+        self.to_int, self.to_word = dict(), dict()
+        top_n_counts = sorted(counts, key=counts.__getitem__, reverse=True)[:s.size_vocab]
+        for word in special_words + top_n_counts:
+            idx = len(self.to_int)
+            self.to_int[word] = idx
+            self.to_word[idx] = word
+        self.vocsize = len(self.to_int)
+        self.nclasses = self.vocsize
 
 
 """ functions """
 
 
 def to_array(string, doc_type):
-    length = len(string) + 1
-    size = s.bucket_factor ** get_bucket_idx(length)
+    tokens = string.split()
     if doc_type == 'title':
-        string = GO + string
+        tokens = [GO] + tokens
+    length = len(tokens)
+    if not tokens:
+        length += 1
+    size = s.bucket_factor ** get_bucket_idx(length)
     sentence_vector = np.zeros(size, dtype='int32') + data.to_int[PAD]
-    for i, char in enumerate(string):
-        if char not in data.to_int:
-            char = OOV
-        char_code = data.to_int[char]
-        sentence_vector[i] = char_code
+    for i, word in enumerate(tokens):
+        if word not in data.to_int:
+            word = OOV
+        sentence_vector[i] = data.to_int[word]
     return sentence_vector
 
 
@@ -102,23 +122,24 @@ if __name__ == '__main__':
             os.mkdir(set_name)
         instances = Instance([], [])
         for doc_type in Instance._fields:
-            num_instances = 0
+            data.num_instances = 0
             data_filename = '.'.join([set_name, doc_type, 'txt'])
             with open(os.path.join(s.data_dir, data_filename)) as data_file:
                 for line in data_file:
-                    num_instances += 1
+                    data.num_instances += 1
                     if set_name == 'train':
                         data.num_train += 1
                     array = to_array(line, doc_type)
                     instances.__getattribute__(doc_type).append(array)
-                    if num_instances == s.num_instances:
+                    if data.num_instances == s.num_instances:
                         break
 
         buckets = fill_buckets(instances)
         save_buckets(data.num_train, buckets, set_name)
-        data.nclasses = len(data.to_int)
-        data.vocsize = data.nclasses
-        print("The number of training instances is ", data.num_train)
-        print("The number of classes is ", data.nclasses)
+
+        print("\nsize of dictionary:", data.vocsize)
+        print("number of instances:", data.num_instances)
+        print("size of training set:", data.num_train)
+
         with open(DATA_OBJ_FILE, 'w') as handle:
             pickle.dump(data, handle)
