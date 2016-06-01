@@ -7,29 +7,14 @@ import numpy as np
 import time
 import sys
 
-
-def format_time(seconds):
-    if seconds is None:
-        return float("nan")
-    minutes, seconds = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
-
-
-<<<<<<< HEAD
-x = T.constant(np.ones((1024, 40000)))
-print(theano.function([], x)())
-=======
-def print_progress(epoch, instances_processed, num_instances, loss, start_time):
-    progress = round(float(instances_processed) / num_instances, ndigits=3)
-    elapsed_time = time.time() - start_time
-    eta = elapsed_time / progress if progress else None
-    elapsed_time, eta = map(format_time, (elapsed_time, eta))
-    print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10}{:<10}###'
-          .format(epoch, progress, float(loss), elapsed_time, eta), end='')
-    sys.stdout.flush()
->>>>>>> char-rnn
-
-
-print_progress(1, 0, 2000, 12, time.time())
-print(format_time(None))
+from decimal import Decimal
+x =.5010003
+exp = int(np.log10(x))
+sign = "+"
+if x < 1:
+    sign = ""
+    exp -= 1
+print(exp)
+coeff = x * 10 ** (-exp)
+print(coeff)
+print("{:1.2}e{}{}".format(coeff, sign, exp))

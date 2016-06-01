@@ -72,12 +72,22 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
         hours, minutes = divmod(minutes, 60)
         return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
 
+    def scientific_notation(x):
+        exp = int(np.log10(x))
+        sign = "+"
+        if x < 1:
+            sign = ""
+            exp -= 1
+        coeff = x * 10 ** (-exp)
+        return "{:1.2}e{}{}".format(coeff, sign, exp)
+
     progress = round(float(instances_processed) / num_instances, ndigits=3)
+    loss = scientific_notation(loss)
     elapsed_time = time.time() - start_time
     eta = elapsed_time / progress if progress else None
     elapsed_time, eta = map(format_time, (elapsed_time, eta))
     print('\r###\t{:<10d}{:<10.1%}{:<10.5f}{:<10}{:<10}###'
-          .format(epoch, progress, float(loss), elapsed_time, eta), end='')
+          .format(epoch, progress, loss, elapsed_time, eta), end='')
     sys.stdout.flush()
 
 
@@ -176,14 +186,14 @@ if __name__ == '__main__':
     with open(DATA_OBJ_FILE) as handle:
         data = pickle.load(handle)
 
-    # rnn = Model(s.hidden_size,
-    #             data.nclasses,
-    #             data.vocsize,  # num_embeddings
-    #             s.embedding_dim,  # embedding_dim
-    #             1,  # window_size
-    #             s.memory_size,
-    #             s.n_memory_slots,
-    #             data.to_int[GO])
+    rnn = Model(s.hidden_size,
+                data.nclasses,
+                data.vocsize,  # num_embeddings
+                s.embedding_dim,  # embedding_dim
+                1,  # window_size
+                s.memory_size,
+                s.n_memory_slots,
+                data.to_int[GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
