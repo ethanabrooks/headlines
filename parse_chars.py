@@ -21,9 +21,9 @@ print(s)
 print('-' * 80)
 
 os.environ["THEANO_FLAGS"] = "device=gpu"
-PAD = '<PAD>'
-GO = '<GO>'
-OOV = '<OOV>'
+PAD = chr(0)
+GO = chr(1)
+OOV = chr(2)
 DATA_OBJ_FILE = 'data.pkl'
 
 
