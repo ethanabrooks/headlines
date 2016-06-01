@@ -10,8 +10,6 @@ import time
 import pickle
 from collections import namedtuple
 from functools import partial
-from parse_chars import PAD, GO, DATA_OBJ_FILE
-
 import numpy as np
 import os
 from bokeh.io import output_file, vplot, save
@@ -19,6 +17,35 @@ from bokeh.plotting import figure
 
 from rnn_em import Model
 from tabulate import tabulate
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
+parser.add_argument('--memory_size', type=int, default=80, help='Memory size')
+parser.add_argument('--embedding_dim', type=int, default=35, help='Embedding size')
+parser.add_argument('--n_memory_slots', type=int, default=10, help='Memory slots')
+parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
+parser.add_argument('--seed', type=int, default=345, help='Seed')
+parser.add_argument('--batch_size', type=int, default=80,
+                    help='Number of backprop through time steps')
+parser.add_argument('--window_size', type=int, default=7,
+                    help='Number of words in context window')
+parser.add_argument('--learn_rate', type=float, default=0.0627142536696559,
+                    help='Learning rate')
+parser.add_argument('--verbose', help='Verbose or not', action='store_true')
+parser.add_argument('--save_vars', help='pickle certain variables', action='store_true')
+parser.add_argument('--load_vars', help='pickle.load certain variables', action='store_true')
+parser.add_argument('--dataset', type=str, default='jeopardy',
+                    help='select dataset [atis|Jeopardy]')
+parser.add_argument('--plots', type=str, default='plots',
+                    help='file for saving Bokeh plots output')
+
+s = parser.parse_args()
+assert s.window_size % 2 == 1, "`window_size` must be an odd number."
+print(s)
+print('-' * 80)
+
+from parse_chars import PAD, GO, DATA_OBJ_FILE
+
 
 # from spacy import English
 
@@ -150,32 +177,6 @@ def print_graphs(scores):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
-    parser.add_argument('--memory_size', type=int, default=80, help='Memory size')
-    parser.add_argument('--embedding_dim', type=int, default=35, help='Embedding size')
-    parser.add_argument('--n_memory_slots', type=int, default=10, help='Memory slots')
-    parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
-    parser.add_argument('--seed', type=int, default=345, help='Seed')
-    parser.add_argument('--batch_size', type=int, default=80,
-                        help='Number of backprop through time steps')
-    parser.add_argument('--window_size', type=int, default=7,
-                        help='Number of words in context window')
-    parser.add_argument('--learn_rate', type=float, default=0.0627142536696559,
-                        help='Learning rate')
-    parser.add_argument('--verbose', help='Verbose or not', action='store_true')
-    parser.add_argument('--save_vars', help='pickle certain variables', action='store_true')
-    parser.add_argument('--load_vars', help='pickle.load certain variables', action='store_true')
-    parser.add_argument('--dataset', type=str, default='jeopardy',
-                        help='select dataset [atis|Jeopardy]')
-    parser.add_argument('--plots', type=str, default='plots',
-                        help='file for saving Bokeh plots output')
-
-    s = parser.parse_args()
-    assert s.window_size % 2 == 1, "`window_size` must be an odd number."
-    print(s)
-    print('-' * 80)
-
     np.random.seed(s.seed)
     random.seed(s.seed)
     data = Data()
