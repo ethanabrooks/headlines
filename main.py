@@ -21,9 +21,9 @@ from parse_chars import PAD, GO, DATA_OBJ_FILE
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
-parser.add_argument('--memory_size', type=int, default=80, help='Memory size')
-parser.add_argument('--embedding_dim', type=int, default=35, help='Embedding size')
-parser.add_argument('--n_memory_slots', type=int, default=10, help='Memory slots')
+parser.add_argument('--memory_size', type=int, default=40, help='Memory size')
+parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding size')
+parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
 parser.add_argument('--batch_size', type=int, default=80,
