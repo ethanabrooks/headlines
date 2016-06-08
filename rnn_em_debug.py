@@ -245,7 +245,7 @@ class Model(object):
                                                       name='test_scan')
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=produce_title_test(*outputs_info[2:]),
+                                    outputs=[h] + produce_title_test(*outputs_info[2:]),
                                     on_unused_input='ignore')
 
         self.infer = theano.function(inputs=[articles, titles],
