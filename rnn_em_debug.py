@@ -269,7 +269,7 @@ if __name__ == '__main__':
     rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
-    print(theano.function([], outputs=rnn.W)().shape)
+    print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)
