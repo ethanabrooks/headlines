@@ -269,3 +269,4 @@ if __name__ == '__main__':
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)
+        print(result.shape)
