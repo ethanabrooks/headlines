@@ -21,7 +21,7 @@ def cosine_dist(tensor, matrix):
     """
     matrix_norm = T.shape_padright(matrix.norm(2, axis=1))
     tensor_norm = tensor.norm(2, axis=1)
-    return T.batched_dot(matrix, tensor) / (matrix_norm * tensor_norm)
+    return T.batched_dot(matrix, tensor) / (matrix_norm * tensor_norm + 1)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences
@@ -58,13 +58,13 @@ class Model(object):
             'W': (hidden_size, nclasses),
             'h0': hidden_size,
             'w_a': (n_article_slots,),
-            'w_t': (n_title_slots,),
-            'M_a': (memory_size, n_article_slots),
-            'M_t': (memory_size, n_title_slots)
+            'w_t': (n_title_slots,)
         }
 
         zeros = {
             # attr: shape
+            'M_a': (memory_size, n_article_slots),
+            'M_t': (memory_size, n_title_slots),
             'bg_a': n_article_slots,
             'bg_t': n_title_slots,
             'bk': memory_size,
