@@ -169,10 +169,7 @@ class Model(object):
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
-            # self.Wx = Print('Wx', ['mean'])(self.Wx)
-            self.Wh = Print('Wh', ['mean'])(self.Wh)
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
-            h = Print('h', ['mean'])(h)
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
@@ -270,9 +267,10 @@ if __name__ == '__main__':
     rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
-    print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
-    for result in rnn.test(articles, titles):
-        pass
+    print('self.Wh mean: ', theano.function([], outputs=rnn.Wh)().mean)
+    print('self.Wx mean: ', theano.function([], outputs=rnn.Wx)().mean)
+    # for result in rnn.test(articles, titles):
+    #     pass
         # print('-' * 10)
         # print(result)
         # print(result.shape)
