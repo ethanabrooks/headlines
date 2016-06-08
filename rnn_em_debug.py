@@ -238,15 +238,16 @@ class Model(object):
                                                        big_is_error=True))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
+
         self.test = theano.function(inputs=[articles, titles],
                                     outputs=produce_title_test(*outputs_info[2:]),
                                     on_unused_input='ignore')
+
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
                                                       n_steps=titles.shape[1],
                                                       name='test_scan')
-
 
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
@@ -260,6 +261,7 @@ class Model(object):
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
+            print(params)
             self.__dict__.update(params)
 
 
