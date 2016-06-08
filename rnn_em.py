@@ -267,8 +267,8 @@ if __name__ == '__main__':
     rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
-    print('self.Wh mean: ', theano.function([], outputs=rnn.Wh)().mean)
-    print('self.Wx mean: ', theano.function([], outputs=rnn.Wx)().mean)
+    print('self.Wh mean: ', theano.function([], outputs=rnn.Wh)().mean())
+    print('self.Wx mean: ', theano.function([], outputs=rnn.Wx)().mean())
     # for result in rnn.test(articles, titles):
     #     pass
         # print('-' * 10)
