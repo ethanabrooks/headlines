@@ -169,8 +169,8 @@ class Model(object):
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
-            self.Wx = Print('Wx')(self.Wx)
-            self.Wh = Print('Wh')(self.Wh)
+            self.Wx = Print('Wx', ['mean'])(self.Wx)
+            self.Wh = Print('Wh', ['mean'])(self.Wh)
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
 
             # eqn 10
