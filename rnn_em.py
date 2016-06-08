@@ -140,7 +140,9 @@ class Model(object):
                 w_read = w_a  # [instances, n_article_slots]
             else:
                 M_read = T.concatenate([M_a, M_t], axis=2)  # [instances, memory_size, n_title_slots]
+                M_read = Print('M_read')(M_read)
                 w_read = T.concatenate([w_a, w_t], axis=1)  # [instances, n_title_slots]
+                w_read = Print('w_read')(w_read)
 
             # eqn 15
             c = T.batched_dot(M_read, w_read)  # [instances, memory_size]
@@ -169,7 +171,9 @@ class Model(object):
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
+            c = Print('c')(c)
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
+            h = Print('h')(h)
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
@@ -269,6 +273,7 @@ if __name__ == '__main__':
     titles = numpy.load("titles.npy")
     print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
     for result in rnn.test(articles, titles):
-        print('-' * 10)
-        print(result)
-        print(result.shape)
+        pass
+        # print('-' * 10)
+        # print(result)
+        # print(result.shape)
