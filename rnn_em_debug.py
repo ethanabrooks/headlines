@@ -265,9 +265,11 @@ class Model(object):
 
 if __name__ == '__main__':
     rnn = Model()
+    print('self.bg_a: ', theano.function([], outputs=rnn.bg_a)())
     rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
+    print('self.bg_a: ', theano.function([], outputs=rnn.bg_a)())
     print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
     for result in rnn.test(articles, titles):
         pass
