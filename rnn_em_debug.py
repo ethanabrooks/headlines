@@ -159,6 +159,7 @@ class Model(object):
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
+                w_hat = Print('w_hat', ['mean'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
@@ -172,9 +173,8 @@ class Model(object):
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
 
             # eqn 10
-            self.W = Print('W', ['shape'])(self.W)
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
-            y = Print('y', ['shape'])(y)
+            y = Print('y', ['mean'])(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
@@ -252,7 +252,6 @@ class Model(object):
 
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
-
 
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}
