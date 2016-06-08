@@ -204,10 +204,11 @@ class Model(object):
         read_article = partial(recurrence, is_article=True)
         i0 = T.constant(0, dtype=int32)
         outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
-        [_, y_article, _, h, w, M], _ = theano.scan(fn=read_article,
-                                                    outputs_info=outputs_info,
-                                                    n_steps=articles.shape[1],
-                                                    name='read_scan')
+
+        [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
+                                            outputs_info=outputs_info,
+                                            n_steps=articles.shape[1],
+                                            name='read_scan')
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
@@ -244,6 +245,9 @@ class Model(object):
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
 
+        self.test = self.infer
+
+
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}
         with open(os.path.join(folder, 'params.pkl'), 'w') as handle:
@@ -257,8 +261,9 @@ class Model(object):
 
 if __name__ == '__main__':
     rnn = Model()
-    articles = pickle.load("articles.pkl")
-    titles = pickle.load("titles.pkl")
+    rnn.load('.')
+    # articles = pickle.load("articles.pkl")
+    # titles = pickle.load("titles.pkl")
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)
