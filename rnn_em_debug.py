@@ -172,7 +172,10 @@ class Model(object):
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
 
             # eqn 10
+            self.W = Print('W', ['shape'])(self.W)
+            h = Print('h', ['shape'])(h)
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
+            y = Print('y', ['shape'])(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
