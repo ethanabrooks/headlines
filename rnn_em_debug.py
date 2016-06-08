@@ -272,7 +272,6 @@ if __name__ == '__main__':
     print('self.bg_a: ', theano.function([], outputs=rnn.bg_a)())
     print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
     for result in rnn.test(articles, titles):
-        pass
-        # print('-' * 10)
-        # print(result)
-        # print(result.shape)
+        print('-' * 10)
+        print(result)
+        print(result.shape)
