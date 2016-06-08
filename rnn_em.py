@@ -251,7 +251,7 @@ class Model(object):
 
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
-            params = pickle.load(self.params, handle)
+            params = pickle.load(handle)
             self.__dict__.update(params)
 
 
