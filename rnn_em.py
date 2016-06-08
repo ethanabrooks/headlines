@@ -173,7 +173,7 @@ class Model(object):
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
-            y = Print('y', ['mean'])(y)
+            y = Print('y')(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
