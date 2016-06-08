@@ -242,6 +242,7 @@ class Model(object):
         self.test = theano.function(inputs=[articles, titles],
                                     outputs=produce_title(*outputs_info[2:]),
                                     on_unused_input='ignore')
+        self.test = self.learn
 
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
@@ -267,13 +268,11 @@ class Model(object):
 
 if __name__ == '__main__':
     rnn = Model()
-    print('self.bg_a: ', theano.function([], outputs=rnn.bg_a)())
     rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
-    print('self.bg_a: ', theano.function([], outputs=rnn.bg_a)())
     print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
-    for result in rnn.test(articles, titles):
+    for result in [rnn.test(articles, titles)[2]]:
         print('-' * 10)
         print(result)
         print(result.shape)
