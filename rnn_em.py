@@ -166,6 +166,7 @@ class Model(object):
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
+                w_t = Print('w_t')(w_t)
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
@@ -173,7 +174,6 @@ class Model(object):
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
-            y = Print('y')(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
