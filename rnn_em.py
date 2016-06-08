@@ -21,14 +21,14 @@ def cosine_dist(tensor, matrix):
     """
     matrix_norm = T.shape_padright(matrix.norm(2, axis=1))
     tensor_norm = tensor.norm(2, axis=1)
-    return T.batched_dot(matrix, tensor) / (matrix_norm * tensor_norm)
+    return T.batched_dot(matrix, tensor) / (matrix_norm * tensor_norm + 1)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences
 class Model(object):
     def __init__(self,
                  hidden_size=100,
-                 nclasses=3,
+                 nclasses=73,
                  num_embeddings=11359,
                  embedding_dim=100,
                  window_size=1,  # TODO: do we want some kind of window?
@@ -58,13 +58,13 @@ class Model(object):
             'W': (hidden_size, nclasses),
             'h0': hidden_size,
             'w_a': (n_article_slots,),
-            'w_t': (n_title_slots,),
-            'M_a': (memory_size, n_article_slots),
-            'M_t': (memory_size, n_title_slots)
+            'w_t': (n_title_slots,)
         }
 
         zeros = {
             # attr: shape
+            'M_a': (memory_size, n_article_slots),
+            'M_t': (memory_size, n_title_slots),
             'bg_a': n_article_slots,
             'bg_t': n_title_slots,
             'bk': memory_size,
@@ -159,6 +159,7 @@ class Model(object):
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
+                w_hat = Print('w_hat', ['mean'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
@@ -173,6 +174,7 @@ class Model(object):
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
+            y = Print('y', ['mean'])(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
@@ -204,10 +206,11 @@ class Model(object):
         read_article = partial(recurrence, is_article=True)
         i0 = T.constant(0, dtype=int32)
         outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
-        [_, y_article, _, h, w, M], _ = theano.scan(fn=read_article,
-                                                    outputs_info=outputs_info,
-                                                    n_steps=articles.shape[1],
-                                                    name='read_scan')
+
+        [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
+                                            outputs_info=outputs_info,
+                                            n_steps=articles.shape[1],
+                                            name='read_scan')
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
@@ -229,12 +232,18 @@ class Model(object):
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max, loss],
                                      updates=updates,
-                                     allow_input_downcast=True,
-                                     mode=NanGuardMode(nan_is_error=True,
-                                                       inf_is_error=True,
-                                                       big_is_error=True))
+                                     allow_input_downcast=True)
+                                     # mode=NanGuardMode(nan_is_error=True,
+                                     #                   inf_is_error=True,
+                                     #                   big_is_error=True))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
+
+        self.test = theano.function(inputs=[articles, titles],
+                                    outputs=produce_title(*outputs_info[2:]),
+                                    on_unused_input='ignore')
+        self.test = self.learn
+
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
@@ -252,13 +261,17 @@ class Model(object):
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
+            print(params)
             self.__dict__.update(params)
 
 
 if __name__ == '__main__':
     rnn = Model()
+    rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
+    print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)
+        print(result.shape)
