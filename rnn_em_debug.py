@@ -28,7 +28,7 @@ def cosine_dist(tensor, matrix):
 class Model(object):
     def __init__(self,
                  hidden_size=100,
-                 nclasses=3,
+                 nclasses=73,
                  num_embeddings=11359,
                  embedding_dim=100,
                  window_size=1,  # TODO: do we want some kind of window?
@@ -173,7 +173,6 @@ class Model(object):
 
             # eqn 10
             self.W = Print('W', ['shape'])(self.W)
-            h = Print('h', ['shape'])(h)
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
             y = Print('y', ['shape'])(y)
 
@@ -271,6 +270,7 @@ if __name__ == '__main__':
     titles = numpy.load("titles.npy")
     print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
     for result in rnn.test(articles, titles):
-        print('-' * 10)
-        print(result)
-        print(result.shape)
+        pass
+        # print('-' * 10)
+        # print(result)
+        # print(result.shape)
