@@ -257,8 +257,8 @@ class Model(object):
 
 if __name__ == '__main__':
     rnn = Model()
-    articles = pickle.load("articles.pkl")
-    titles = pickle.load("titles.pkl")
+    articles = numpy.load("articles.npy")
+    titles = numpy.load("titles.npy")
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)

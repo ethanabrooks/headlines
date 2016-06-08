@@ -243,7 +243,8 @@ class Model(object):
                                                       name='test_scan')
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=produce_title_test(outputs_info[2:]))
+                                    outputs=produce_title_test(*outputs_info[2:]),
+                                    on_unused_input='ignore')
 
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
@@ -256,15 +257,15 @@ class Model(object):
 
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
-            params = pickle.load(self.params, handle)
+            params = pickle.load(handle)
             self.__dict__.update(params)
 
 
 if __name__ == '__main__':
     rnn = Model()
     rnn.load('.')
-    # articles = pickle.load("articles.pkl")
-    # titles = pickle.load("titles.pkl")
+    articles = numpy.load("articles.npy")
+    titles = numpy.load("titles.npy")
     for result in rnn.test(articles, titles):
         print('-' * 10)
         print(result)
