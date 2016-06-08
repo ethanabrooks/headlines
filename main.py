@@ -213,6 +213,7 @@ if __name__ == '__main__':
                     if set_name == 'train':
                         np.save('articles', articles)
                         np.save('titles', titles)
+                        exit(0)
                         bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
