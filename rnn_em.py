@@ -170,7 +170,7 @@ class Model(object):
             # MODEL INPUT AND OUTPUT
             # eqn 9
             # self.Wx = Print('Wx', ['mean'])(self.Wx)
-            # self.Wh = Print('Wh', ['mean'])(self.Wh)
+            self.Wh = Print('Wh', ['mean'])(self.Wh)
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
             h = Print('h', ['mean'])(h)
 
