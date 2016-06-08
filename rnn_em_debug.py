@@ -242,10 +242,11 @@ class Model(object):
                                                       n_steps=titles.shape[1],
                                                       name='test_scan')
 
+        self.test = theano.function(inputs=[articles, titles],
+                                    outputs=produce_title_test(outputs_info[2:]))
+
         self.infer = theano.function(inputs=[articles, titles],
                                      outputs=y_max)
-
-        self.test = self.infer
 
 
     def save(self, folder):

@@ -190,6 +190,7 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[GO])
+    rnn.load('.')
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -210,6 +211,8 @@ if __name__ == '__main__':
                 for articles, titles in get_batches(instances):
 
                     if set_name == 'train':
+                        np.save('articles', articles)
+                        np.save('titles', titles)
                         bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
