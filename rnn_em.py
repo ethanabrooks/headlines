@@ -159,7 +159,6 @@ class Model(object):
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
-                w_hat = Print('w_hat', ['mean'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
