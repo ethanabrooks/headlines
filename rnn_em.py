@@ -248,7 +248,7 @@ class Model(object):
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
-                                     outputs=y_max)
+                                     outputs=[y, y_max])
 
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}
@@ -263,10 +263,10 @@ class Model(object):
 
 
 if __name__ == '__main__':
-    rnn = Model()
-    rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
+    rnn = Model()
+    rnn.load('.')
     for result in rnn.test(articles, titles):
         pass
         print('-' * 10)
