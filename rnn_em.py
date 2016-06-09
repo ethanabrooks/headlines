@@ -238,7 +238,7 @@ class Model(object):
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=[y, y_max],
+                                    outputs=[y, y_flatten],
                                     on_unused_input='ignore')
 
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
