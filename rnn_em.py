@@ -238,7 +238,7 @@ class Model(object):
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=produce_title(*outputs_info[2:]),
+                                    outputs=[y_max],
                                     on_unused_input='ignore')
 
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
@@ -267,10 +267,8 @@ if __name__ == '__main__':
     rnn.load('.')
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
-    print('self.Wh mean: ', theano.function([], outputs=rnn.Wh.mean())())
-    print('self.Wx mean: ', theano.function([], outputs=rnn.Wx.mean())())
-    # for result in rnn.test(articles, titles):
-    #     pass
-        # print('-' * 10)
-        # print(result)
-        # print(result.shape)
+    for result in rnn.test(articles, titles):
+        pass
+        print('-' * 10)
+        print(result)
+        print(result.shape)

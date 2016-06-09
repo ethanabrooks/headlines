@@ -7,14 +7,18 @@ import numpy as np
 import time
 import sys
 
-from decimal import Decimal
-x =.5010003
-exp = int(np.log10(x))
-sign = "+"
-if x < 1:
-    sign = ""
-    exp -= 1
-print(exp)
-coeff = x * 10 ** (-exp)
-print(coeff)
-print("{:1.2}e{}{}".format(coeff, sign, exp))
+
+def f(i):
+    return i + 1
+
+
+i0 = T.constant(0, dtype="int32")
+rng, _ = theano.scan(fn=f,
+                     outputs_info=[i0],
+                     n_steps=10)
+
+function = theano.function(inputs=[], outputs=[rng])
+for result in function():
+    print('-' * 10)
+    print(result)
+    print(result.shape)
