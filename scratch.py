@@ -16,9 +16,10 @@ i0 = T.constant(0, dtype="int32")
 rng, _ = theano.scan(fn=f,
                      outputs_info=[i0],
                      n_steps=10)
+x = T.imatrix()
 
-function = theano.function(inputs=[], outputs=[rng])
-for result in function():
+function = theano.function(inputs=[x], outputs=[x.ravel()])
+for result in function(np.arange(9, dtype='int32').reshape(3,3)):
     print('-' * 10)
     print(result)
     print(result.shape)

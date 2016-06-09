@@ -228,7 +228,7 @@ class Model(object):
         updates = lasagne.updates.adadelta(loss, self.params)
 
         self.learn = theano.function(inputs=[articles, titles],
-                                     outputs=[y_max, loss],
+                                     outputs=[y_max.T, loss],
                                      updates=updates,
                                      allow_input_downcast=True)
                                      # mode=NanGuardMode(nan_is_error=True,
@@ -238,7 +238,7 @@ class Model(object):
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=[y, y_flatten],
+                                    outputs=[y_max.T],
                                     on_unused_input='ignore')
 
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
@@ -248,7 +248,7 @@ class Model(object):
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
-                                     outputs=[y_flatten, y_max])
+                                     outputs=y_max.T)
 
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}
@@ -265,6 +265,7 @@ class Model(object):
 if __name__ == '__main__':
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
+    print(titles.shape)
     rnn = Model()
     rnn.load('.')
     for result in rnn.test(articles, titles):
