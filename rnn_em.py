@@ -219,16 +219,16 @@ class Model(object):
                                                       name='train_scan')
 
         # loss and updates
-        y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
+        y_flatten = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
         y_true = titles.ravel()
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
-        losses = T.nnet.categorical_crossentropy(y, y_true)
+        losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
         loss = lasagne.objectives.aggregate(losses, weights, mode='sum')
         updates = lasagne.updates.adadelta(loss, self.params)
 
         self.learn = theano.function(inputs=[articles, titles],
-                                     outputs=[y_max, loss],
+                                     outputs=[y, y_flatten],
                                      updates=updates,
                                      allow_input_downcast=True)
                                      # mode=NanGuardMode(nan_is_error=True,
@@ -248,7 +248,7 @@ class Model(object):
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
-                                     outputs=[y, y_max])
+                                     outputs=[y_flatten, y_max])
 
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}
@@ -258,7 +258,6 @@ class Model(object):
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
-            print(params)
             self.__dict__.update(params)
 
 
