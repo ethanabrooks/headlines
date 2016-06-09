@@ -228,7 +228,7 @@ class Model(object):
         updates = lasagne.updates.adadelta(loss, self.params)
 
         self.learn = theano.function(inputs=[articles, titles],
-                                     outputs=[y, y_flatten],
+                                     outputs=[y_max, loss],
                                      updates=updates,
                                      allow_input_downcast=True)
                                      # mode=NanGuardMode(nan_is_error=True,
@@ -238,7 +238,7 @@ class Model(object):
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=[y_max],
+                                    outputs=[y, y_max],
                                     on_unused_input='ignore')
 
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
@@ -258,6 +258,7 @@ class Model(object):
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
+            print(params)
             self.__dict__.update(params)
 
 
