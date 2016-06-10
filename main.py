@@ -133,11 +133,7 @@ def evaluate(predictions, targets):
     """
 
     def to_vector(list_of_arrays):
-        try:
-            return np.hstack(array.ravel() for array in list_of_arrays)
-        except IndexError:
-            with open("list_of_arrays.pkl", 'w') as handle:
-                pickle.dump(list_of_arrays, handle)
+        return np.hstack(array.ravel() for array in list_of_arrays)
 
     predictions, targets = map(to_vector, (predictions, targets))
     return (predictions == targets).mean()
@@ -147,7 +143,7 @@ def track_scores(scores, accuracy, epoch, dataset_name):
     scores[dataset_name].append(Score(accuracy, epoch))
     best_score = max(scores[dataset_name], key=lambda score: score.value)
     table = [['accuracy: ', accuracy, best_score.value, best_score.epoch]]
-    if accuracy > best_score.value:
+    if accuracy >= best_score.value:
         command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
         subprocess.call(command.split())
     headers = [dataset_name.upper(), "score", "best score", "best score epoch"]
@@ -228,7 +224,7 @@ if __name__ == '__main__':
                     predictions.append(bucket_predictions)
                     targets.append(titles)
             rnn.save(folder)
-            write_predictions_to_file(data.to_char, set_name, predictions, targets)
+            write_predictions_to_file(data.to_char, set_name, targets, predictions)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)

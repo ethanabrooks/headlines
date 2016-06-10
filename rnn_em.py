@@ -213,14 +213,15 @@ class Model(object):
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
         outputs_info.extend([self.w_t, self.M_t])
+        bucket_width = titles.shape[1] - 1  # subtract 1 because <go> is omitted in y_true
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
                                                       outputs_info=outputs_info,
-                                                      n_steps=titles.shape[1],
+                                                      n_steps=bucket_width,
                                                       name='train_scan')
 
         # loss and updates
         y_flatten = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
-        y_true = titles.ravel()
+        y_true = titles[:, 1:].ravel()  # [:, 1:] in order to omit <go>
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
@@ -244,7 +245,7 @@ class Model(object):
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
-                                                      n_steps=titles.shape[1],
+                                                      n_steps=bucket_width,
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
@@ -265,7 +266,6 @@ class Model(object):
 if __name__ == '__main__':
     articles = numpy.load("articles.npy")
     titles = numpy.load("titles.npy")
-    print(titles.shape)
     rnn = Model()
     rnn.load('.')
     for result in rnn.test(articles, titles):
