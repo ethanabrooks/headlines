@@ -106,7 +106,7 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     progress = round(float(instances_processed) / num_instances, ndigits=3)
     loss = scientific_notation(loss)
     elapsed_time = time.time() - start_time
-    eta = elapsed_time / progress if progress else None
+    eta = num_instances / (elapsed_time / num_instances) if progress else None
     elapsed_time, eta = map(format_time, (elapsed_time, eta))
     print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}###'
           .format(epoch, progress, loss, elapsed_time, eta), end='')
@@ -193,9 +193,9 @@ if __name__ == '__main__':
         print('\n###\t{:10}{:10}{:10}{:10}{:10}###'
               .format('epoch', 'progress', 'loss', 'runtime', 'ETA'))
         start_time = time.time()
+        instances_processed = 0
         for set_name in list(Datasets._fields):
             predictions, targets = [], []
-            instances_processed = 0
             loss = None
             for bucket_dir in os.listdir(set_name):
                 path = os.path.join(set_name, bucket_dir)
@@ -221,6 +221,7 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
+                data.num_train = num_instances
             rnn.save(folder)
             write_predictions_to_file(data.to_char, set_name, targets, predictions)
             accuracy = evaluate(predictions, targets)

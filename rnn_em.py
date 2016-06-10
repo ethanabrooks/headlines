@@ -58,13 +58,13 @@ class Model(object):
             'W': (hidden_size, nclasses),
             'h0': hidden_size,
             'w_a': (n_article_slots,),
-            'w_t': (n_title_slots,)
+            'w_t': (n_title_slots,),
+            'M_a': (memory_size, n_article_slots),
+            'M_t': (memory_size, n_title_slots)
         }
 
         zeros = {
             # attr: shape
-            'M_a': (memory_size, n_article_slots),
-            'M_t': (memory_size, n_title_slots),
             'bg_a': n_article_slots,
             'bg_t': n_title_slots,
             'bk': memory_size,
@@ -106,8 +106,17 @@ class Model(object):
             self.names.remove(key)
 
         self.params = [eval('self.' + name) for name in self.names]
+        self.M_a *= .1
+        self.M_t *= .1
 
-        def recurrence(i, h_tm1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
+        def recurrence(i,
+                       h_tm1,
+                       w_a,
+                       M_a,
+                       w_t=None,
+                       M_t=None,
+                       is_training=True,
+                       is_article=True):
             """
             notes
             Headers from paper in all caps
