@@ -9,22 +9,12 @@ from collections import defaultdict, namedtuple
 
 import shutil
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--num_instances', type=int, default=100000,
-                    help='number of instances to use in Jeopardy dataset')
-parser.add_argument('--size_vocab', type=int, default=10000,
-                    help='number of words in vocab')
-parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
-                    help='path to data')
-parser.add_argument('--bucket_factor', type=int, default=2,
-                    help='factor by which to multiply exponent when determining bucket size')
-
-s = parser.parse_args()
-print(s)
-print('-' * 80)
-
 os.environ["THEANO_FLAGS"] = "device=gpu"
-from main import PAD, GO, OOV, DATA_OBJ_FILE
+
+PAD = '<PAD>'
+GO = '<GO>'
+OOV = '<OOV>'
+DATA_OBJ_FILE = 'data.pkl'
 
 
 def get_bucket_idx(length):
@@ -43,6 +33,7 @@ Score = namedtuple("score", "value epoch")
 
 class Data:
     def __init__(self):
+        self.PAD, self.GO = PAD, GO
         special_words = [PAD, GO, OOV]
         counts = {}
         for set_name in Instance._fields:
@@ -112,15 +103,34 @@ def save_buckets(num_train, buckets, set_name):
                 np.save(filepath, instance.__getattribute__(doc_type))
 
 
+def print_stats(data):
+    print("\nsize of dictionary:", data.vocsize)
+    print("number of instances:", data.num_instances)
+    print("size of training set:", data.num_train)
+
+
 if __name__ == '__main__':
-    """
-    contains global data parameters.
-    Collects data and assigns to different datasets.
-    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--num_instances', type=int, default=100000,
+                        help='number of instances to use in Jeopardy dataset')
+    parser.add_argument('--size_vocab', type=int, default=10000,
+                        help='number of words in vocab')
+    parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
+                        help='path to data')
+    parser.add_argument('--bucket_factor', type=int, default=2,
+                        help='factor by which to multiply exponent when determining bucket size')
+
+    s = parser.parse_args()
+    print(s)
+    print('-' * 80)
+
     data = Data()
     data.num_train = 0
     print('Bucket allocation:')
     for set_name in Datasets._fields:
+
+        # start fresh every time
         if os.path.exists(set_name):
             shutil.rmtree(set_name)
         os.mkdir(set_name)
@@ -141,9 +151,6 @@ if __name__ == '__main__':
         buckets = fill_buckets(instances)
         save_buckets(data.num_train, buckets, set_name)
 
-    print("\nsize of dictionary:", data.vocsize)
-    print("number of instances:", data.num_instances)
-    print("size of training set:", data.num_train)
-
+    print_stats(data)
     with open(DATA_OBJ_FILE, 'w') as handle:
         pickle.dump(data, handle)

@@ -7,6 +7,8 @@ import pickle
 import numpy as np
 from collections import defaultdict, namedtuple
 
+import shutil
+
 from print_data_stats import print_stats
 
 os.environ["THEANO_FLAGS"] = "device=gpu"
@@ -29,7 +31,13 @@ Score = namedtuple("score", "value epoch")
 
 class Data:
     def __init__(self):
-        pass
+        vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
+        self.to_char = dict(enumerate(vocab))
+        self.to_int = {char: i for i, char in enumerate(vocab)}
+        self.nclasses = len(data.to_int)
+        self.vocsize = data.nclasses
+        self.num_train = 0
+        self.PAD, self.GO = PAD, GO
 
 """ functions """
 
@@ -94,31 +102,28 @@ if __name__ == '__main__':
     print('-' * 80)
 
     data = Data()
-    vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
-    data.to_char = dict(enumerate(vocab))
-    data.to_int = {char: i for i, char in enumerate(vocab)}
-    data.num_train = 0
     for set_name in Datasets._fields:
-        if not os.path.exists(set_name):
-            os.mkdir(set_name)
+
+        # start fresh every time
+        if os.path.exists(set_name):
+            shutil.rmtree(set_name)
+        os.mkdir(set_name)
         instances = Instance([], [])
         for doc_type in Instance._fields:
-            num_instances = 0
+            data.num_instances = 0
             data_filename = '.'.join([set_name, doc_type, 'txt'])
             with open(os.path.join(s.data_dir, data_filename)) as data_file:
                 for line in data_file:
-                    num_instances += 1
+                    data.num_instances += 1
                     if set_name == 'train':
                         data.num_train += 1
                     array = to_array(line, doc_type)
                     instances.__getattribute__(doc_type).append(array)
-                    if num_instances == s.num_instances:
+                    if data.num_instances == s.num_instances:
                         break
 
         buckets = fill_buckets(instances)
         save_buckets(data.num_train, buckets, set_name)
-        data.nclasses = len(data.to_int)
-        data.vocsize = data.nclasses
         print_stats(data)
         with open(DATA_OBJ_FILE, 'w') as handle:
             pickle.dump(data, handle)

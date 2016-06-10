@@ -106,8 +106,8 @@ class Model(object):
             self.names.remove(key)
 
         self.params = [eval('self.' + name) for name in self.names]
-        self.M_a *= .1
-        self.M_t *= .1
+        # self.M_a *= .1
+        # self.M_t *= .1
 
         def recurrence(i,
                        h_tm1,

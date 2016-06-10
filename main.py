@@ -3,7 +3,6 @@ from __future__ import print_function
 
 import argparse
 import random
-import string
 import subprocess
 import sys
 import time
@@ -16,7 +15,6 @@ from bokeh.plotting import figure
 
 from rnn_em import Model
 from tabulate import tabulate
-from parse_chars import PAD, GO, DATA_OBJ_FILE
 from pickle import dump, load
 
 parser = argparse.ArgumentParser()
@@ -125,7 +123,7 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     sys.stdout.flush()
 
 
-def write_predictions_to_file(to_char, dataset_name, targets, predictions):
+def write_predictions_to_file(to_char, pad, dataset_name, targets, predictions):
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
@@ -133,7 +131,7 @@ def write_predictions_to_file(to_char, dataset_name, targets, predictions):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
                     values = ''.join([to_char[idx] for idx in arr.ravel()
-                                      if to_char[idx] != PAD])
+                                      if to_char[idx] != pad])
                     handle.write(label + values + '\n')
 
 
@@ -197,7 +195,7 @@ if __name__ == '__main__':
                 1,  # window_size
                 s.memory_size,
                 s.n_memory_slots,
-                data.to_int[GO])
+                data.to_int[data.GO])
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -233,11 +231,8 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
-            data.num_train = num_instances
             rnn.save(folder)
-            write_predictions_to_file(data.to_char, set_name, targets, predictions)
-            pickle('predictions')
-            pickle('targets')
+            write_predictions_to_file(data.to_char, data.PAD, set_name, targets, predictions)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)
