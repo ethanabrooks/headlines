@@ -105,6 +105,10 @@ class Model(object):
         self.params = [eval('self.' + name) for name in self.names]
 
         def recurrence(i, h_tm1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
+            M_a = Print('M_a', ['mean'])(M_a)
+            w_a = Print('w_a', ['mean'])(w_a)
+            h_tm1 = Print('h_tm1', ['mean'])(h_tm1)
+            i = Print('i', ['mean'])(i)
             """
             notes
             Headers from paper in all caps
@@ -134,6 +138,7 @@ class Model(object):
                 document = articles if is_article else titles  # [instances, bucket_width]
                 word_idxs = document[:, i]  # [instances, 1]
             x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
+            x_i = Print('x_i', ['mean'])(x_i)
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
@@ -143,45 +148,63 @@ class Model(object):
                 w_read = T.concatenate([w_a, w_t], axis=1)  # [instances, n_title_slots]
 
             # eqn 15
+            w_read = Print('w_read', ['mean'])(w_read)
+            M_read = Print('M_read', ['mean'])(M_read)
             c = T.batched_dot(M_read, w_read)  # [instances, memory_size]
+            c = Print('c', ['mean'])(c)
 
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
                 g = T.nnet.sigmoid(T.dot(x_i, Wg) + bg)  # [instances, mem]
+                g = Print('g', ['mean'])(g)
 
                 # eqn 11
                 k = T.dot(h_tm1, self.Wk) + self.bk  # [instances, memory_size]
+                k = Print('k', ['mean'])(k)
 
                 # eqn 13
                 beta = T.dot(h_tm1, self.Wb) + self.bb
                 beta = T.log(1 + T.exp(beta))
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
+                beta = Print('beta', ['mean'])(beta)
 
                 # eqn 12
                 w_hat = T.nnet.softmax(beta * cosine_dist(M, k))
+                w_hat = Print('w_hat', ['mean'])(w_hat)
 
                 # eqn 14
                 return (1 - g) * w + g * w_hat  # [instances, mem]
 
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
+            w_a = Print('w_a', ['mean'])(w_a)
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
+                w_t = Print('w_t', ['mean'])(w_t)
 
             # MODEL INPUT AND OUTPUT
             # eqn 9
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
+            h = Print('h', ['mean'])(h)
 
             # eqn 10
             y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
+            y = Print('y', ['mean'])(y)
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
+                M_update = Print('M_update', ['mean'])(M_update)
+                w_update = Print('w_update', ['mean'])(w_update)
+                be = Print('be', ['mean'])(be)
+                We = Print('We', ['mean'])(We)
                 # eqn 17
                 e = T.nnet.sigmoid(T.dot(h_tm1, We) + be)  # [instances, mem]
+                e = Print('e', ['mean'])(e)
                 f = 1. - w_update * e  # [instances, mem]
+                f = Print('f', ['mean'])(f)
 
                 # eqn 16
                 v = T.dot(h, self.Wv) + self.bv  # [instances, memory_size]
+                v = Print('v', ['mean'])(v)
 
                 # need to add broadcast layers for memory update
                 f = f.dimshuffle(0, 'x', 1)  # [instances, 1, mem]
@@ -192,12 +215,15 @@ class Model(object):
                 return M_update * f + T.batched_dot(v, u) * (1 - f)  # [instances, memory_size, mem]
 
             M_a = update_memory(self.We_a, self.be_a, w_a, M_a)
+            M_a = Print('M_a', ['mean'])(M_a)
             attention_and_memory = [w_a, M_a]
             if not is_article:
                 M_t = update_memory(self.We_t, self.be_t, w_t, M_t)
+                M_t = Print('M_t', ['mean'])(M_t)
                 attention_and_memory += [w_t, M_t]
 
             y_max = y.argmax(axis=1).astype(int32)
+            y_max = Print('y_max', ['mean'])(y_max)
             next_idxs = i + 1 if is_training or is_article else y_max
             return [y, y_max, next_idxs, h] + attention_and_memory
 

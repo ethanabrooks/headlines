@@ -186,7 +186,6 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[GO])
-    rnn.load('.')
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -214,6 +213,7 @@ if __name__ == '__main__':
                                                new_loss,
                                                instances_processed,
                                                num_instances)
+                        exit(0)
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,
