@@ -203,6 +203,7 @@ if __name__ == '__main__':
                              for name in Instance._fields]
                 instances = map(np.load, filepaths)
                 assert instances[0].shape[0] == instances[1].shape[0]
+                i = 0
                 for articles, titles in get_batches(instances):
 
                     if set_name == 'train':
@@ -213,7 +214,8 @@ if __name__ == '__main__':
                                                new_loss,
                                                instances_processed,
                                                num_instances)
-                        exit(0)
+                        if i > 2: exit(0)
+                        i += 1
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,
