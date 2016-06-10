@@ -7,7 +7,6 @@ import string
 import subprocess
 import sys
 import time
-import pickle
 from collections import namedtuple
 from functools import partial
 import numpy as np
@@ -18,6 +17,7 @@ from bokeh.plotting import figure
 from rnn_em import Model
 from tabulate import tabulate
 from parse_chars import PAD, GO, DATA_OBJ_FILE
+from pickle import dump, load
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
@@ -26,7 +26,7 @@ parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding si
 parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
 parser.add_argument('--seed', type=int, default=345, help='Seed')
-parser.add_argument('--batch_size', type=int, default=80,
+parser.add_argument('--batch_size', type=int, default=20,
                     help='Number of backprop through time steps')
 parser.add_argument('--window_size', type=int, default=7,
                     help='Number of words in context window')
@@ -44,7 +44,6 @@ s = parser.parse_args()
 assert s.window_size % 2 == 1, "`window_size` must be an odd number."
 print(s)
 print('-' * 80)
-
 
 # from spacy import English
 
@@ -67,6 +66,16 @@ ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
 Score = namedtuple("score", "value epoch")
 
 """ functions """
+
+
+def pickle(var_name):
+    with open(var_name + '.pkl', 'w') as handle:
+        dump(eval(var_name), handle)
+
+
+def unpickle(var_name):
+    with open(var_name + '.pkl') as handle:
+        return load(handle)
 
 
 def get_bucket_idx(length):
@@ -106,7 +115,10 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     progress = round(float(instances_processed) / num_instances, ndigits=3)
     loss = scientific_notation(loss)
     elapsed_time = time.time() - start_time
-    eta = num_instances / (elapsed_time / num_instances) if progress else None
+    if instances_processed:
+        eta = (num_instances - instances_processed) / instances_processed * elapsed_time
+    else:
+        eta = None
     elapsed_time, eta = map(format_time, (elapsed_time, eta))
     print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}###'
           .format(epoch, progress, loss, elapsed_time, eta), end='')
@@ -135,7 +147,9 @@ def evaluate(predictions, targets):
     def to_vector(list_of_arrays):
         return np.hstack(array.ravel() for array in list_of_arrays)
 
+    targets = [target[:, 1:] for target in targets]  # get rid of <go> at beginning of targets
     predictions, targets = map(to_vector, (predictions, targets))
+    assert predictions.size == targets.size
     return (predictions == targets).mean()
 
 
@@ -174,9 +188,7 @@ def print_graphs(scores):
 if __name__ == '__main__':
     np.random.seed(s.seed)
     random.seed(s.seed)
-    data = Data()
-    with open(DATA_OBJ_FILE) as handle:
-        data = pickle.load(handle)
+    data = unpickle('data')
 
     rnn = Model(s.hidden_size,
                 data.nclasses,
@@ -221,9 +233,11 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
-                data.num_train = num_instances
+            data.num_train = num_instances
             rnn.save(folder)
             write_predictions_to_file(data.to_char, set_name, targets, predictions)
+            pickle('predictions')
+            pickle('targets')
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)
