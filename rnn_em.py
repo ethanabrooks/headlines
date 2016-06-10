@@ -76,20 +76,23 @@ class Model(object):
             'b': nclasses,
         }
 
-        def random_shared(shape):
+        def random_shared(name):
+            shape = randoms[name]
             return theano.shared(
-                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX))
+                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX),
+                name=name)
 
-        def zeros_shared(shape):
-            return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
+        def zeros_shared(name):
+            shape = zeros[name]
+            return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX), name=name)
 
         for key in randoms:
             # create an attribute with associated shape and random values
-            setattr(self, key, random_shared(randoms[key]))
+            setattr(self, key, random_shared(key))
 
         for key in zeros:
             # create an attribute with associated shape and values equal to 0
-            setattr(self, key, zeros_shared(zeros[key]))
+            setattr(self, key, zeros_shared(key))
 
         self.names = randoms.keys() + zeros.keys()
         scan_vars = 'h0 w_a M_a w_t M_t'.split()
@@ -194,8 +197,6 @@ class Model(object):
             def update_memory(We, be, w_update, M_update):
                 M_update = Print('M_update', ['mean'])(M_update)
                 w_update = Print('w_update', ['mean'])(w_update)
-                be = Print('be', ['mean'])(be)
-                We = Print('We', ['mean'])(We)
                 # eqn 17
                 e = T.nnet.sigmoid(T.dot(h_tm1, We) + be)  # [instances, mem]
                 e = Print('e', ['mean'])(e)
@@ -234,7 +235,8 @@ class Model(object):
         [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
                                             outputs_info=outputs_info,
                                             n_steps=articles.shape[1],
-                                            name='read_scan')
+                                            name='read_scan',
+                                            mode=NanGuardMode(nan_is_error=True))
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
@@ -243,24 +245,29 @@ class Model(object):
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
                                                       outputs_info=outputs_info,
                                                       n_steps=bucket_width,
-                                                      name='train_scan')
+                                                      name='train_scan',
+                                                      mode=NanGuardMode(nan_is_error=True))
 
         # loss and updates
+        y_max = Print('y_max', ['mean'])(y_max)
         y_flatten = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
         y_true = titles[:, 1:].ravel()  # [:, 1:] in order to omit <go>
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
+        weights = Print('weights', ['mean'])(weights)
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
         loss = lasagne.objectives.aggregate(losses, weights, mode='sum')
+        loss = Print('loss', ['mean'])(loss)
         updates = lasagne.updates.adadelta(loss, self.params)
 
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max.T, loss],
                                      updates=updates,
-                                     allow_input_downcast=True)
-                                     # mode=NanGuardMode(nan_is_error=True,
-                                     #                   inf_is_error=True,
-                                     #                   big_is_error=True))
+                                     allow_input_downcast=True,
+                                     name='learn',
+                                     mode=NanGuardMode(nan_is_error=True,
+                                                       inf_is_error=False,
+                                                       big_is_error=False))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
@@ -275,6 +282,7 @@ class Model(object):
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
+                                     name='infer',
                                      outputs=y_max.T)
 
     def save(self, folder):
