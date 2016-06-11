@@ -229,6 +229,7 @@ if __name__ == '__main__':
 
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()
+                            print('\n')
                             sample_prediction = translate(bucket_predictions[0, :],
                                                           data.from_int,
                                                           data.SEP,

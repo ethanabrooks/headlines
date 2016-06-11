@@ -9,7 +9,7 @@ import theano
 import theano.tensor as T
 import keras
 from keras.engine import Input
-from keras.layers import Dense, GRU
+from keras.layers import Dense, GRU, SimpleRNN
 from keras.models import Sequential
 
 batch_size = 2
@@ -24,9 +24,9 @@ Y_batch = np.arange(
     batch_size, timesteps, output_dim)
 
 model = Sequential()
-model.add(GRU(output_dim,
-              input_shape=(timesteps, input_dim),
-              return_sequences=True))
+model.add(SimpleRNN(output_dim,
+                    input_shape=(timesteps, input_dim),
+                    return_sequences=True))
 model.compile(loss='categorical_crossentropy',
               optimizer='sgd',
               metrics=['accuracy'])

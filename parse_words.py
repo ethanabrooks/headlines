@@ -33,7 +33,7 @@ Score = namedtuple("score", "value epoch")
 
 class Data:
     def __init__(self):
-        self.PAD, self.GO, self.PAD = PAD, GO, ' '
+        self.PAD, self.GO, self.SEP = PAD, GO, ' '
         special_words = [PAD, GO, OOV]
         counts = {}
         for set_name in Instance._fields:
