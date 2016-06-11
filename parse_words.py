@@ -44,12 +44,12 @@ class Data:
                     word, count = line.split()
                     counts[word] = float(count)
 
-        self.to_int, self.to_word = dict(), dict()
+        self.to_int, self.from_int = dict(), dict()
         top_n_counts = sorted(counts, key=counts.__getitem__, reverse=True)[:s.size_vocab]
         for word in special_words + top_n_counts:
             idx = len(self.to_int)
             self.to_int[word] = idx
-            self.to_word[idx] = word
+            self.from_int[idx] = word
         self.vocsize = len(self.to_int)
         self.nclasses = self.vocsize
 

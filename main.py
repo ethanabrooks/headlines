@@ -123,15 +123,15 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     sys.stdout.flush()
 
 
-def write_predictions_to_file(to_char, pad, dataset_name, targets, predictions):
+def write_predictions_to_file(from_int, pad, dataset_name, targets, predictions):
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = ''.join([to_char[idx] for idx in arr.ravel()
-                                      if to_char[idx] != pad])
+                    values = ''.join([from_int[idx] for idx in arr.ravel()
+                                      if from_int[idx] != pad])
                     handle.write(label + values + '\n')
 
 
@@ -232,7 +232,7 @@ if __name__ == '__main__':
                     predictions.append(bucket_predictions)
                     targets.append(titles)
             rnn.save(folder)
-            write_predictions_to_file(data.to_char, data.PAD, set_name, targets, predictions)
+            write_predictions_to_file(data.from_int, data.PAD, set_name, targets, predictions)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)

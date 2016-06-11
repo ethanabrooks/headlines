@@ -32,7 +32,7 @@ Score = namedtuple("score", "value epoch")
 class Data:
     def __init__(self):
         vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
-        self.to_char = dict(enumerate(vocab))
+        self.from_int = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
         self.nclasses = len(self.to_int)
         self.vocsize = self.nclasses
