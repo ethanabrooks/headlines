@@ -126,7 +126,6 @@ if __name__ == '__main__':
     print('-' * 80)
 
     data = Data()
-    data.num_train = 0
     print('Bucket allocation:')
     for set_name in Datasets._fields:
 
@@ -137,6 +136,8 @@ if __name__ == '__main__':
         instances = Instance([], [])
         for doc_type in Instance._fields:
             data.num_instances = 0
+            if set_name == 'train':
+                data.num_train = 0
             data_filename = '.'.join([set_name, doc_type, 'txt'])
             with open(os.path.join(s.data_dir, data_filename)) as data_file:
                 for line in data_file:

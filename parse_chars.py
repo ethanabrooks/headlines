@@ -34,8 +34,8 @@ class Data:
         vocab = PAD + GO + OOV + '\n ' + string.lowercase + string.punctuation + string.digits
         self.to_char = dict(enumerate(vocab))
         self.to_int = {char: i for i, char in enumerate(vocab)}
-        self.nclasses = len(data.to_int)
-        self.vocsize = data.nclasses
+        self.nclasses = len(self.to_int)
+        self.vocsize = self.nclasses
         self.num_train = 0
         self.PAD, self.GO = PAD, GO
 
