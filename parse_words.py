@@ -33,7 +33,7 @@ Score = namedtuple("score", "value epoch")
 
 class Data:
     def __init__(self):
-        self.PAD, self.GO = PAD, GO
+        self.PAD, self.GO, self.PAD = PAD, GO, ' '
         special_words = [PAD, GO, OOV]
         counts = {}
         for set_name in Instance._fields:
@@ -90,7 +90,7 @@ def save_buckets(num_train, buckets, set_name):
         size_bucket = len(bucket)
 
         # we only keep buckets with more than 10 instances for optimization
-        if size_bucket < 10:
+        if size_bucket < 10 or bucket[0].article.size == 0 or bucket[0].title.size == 1:
             num_train -= size_bucket
         else:
             bucket_folder = os.path.join(set_name, '-'.join(map(str, key)))

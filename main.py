@@ -93,7 +93,7 @@ def running_average(loss, new_loss, instances_processed, num_instances):
         return (loss * (instances_processed - num_instances) + new_loss) / instances_processed
 
 
-def print_progress(epoch, instances_processed, num_instances, loss, start_time):
+def print_progress(epoch, instances_processed, num_instances, loss, start_time, prediction):
     def format_time(seconds):
         if seconds is None:
             return float("nan")
@@ -118,20 +118,23 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time):
     else:
         eta = None
     elapsed_time, eta = map(format_time, (elapsed_time, eta))
-    print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}###'
-          .format(epoch, progress, loss, elapsed_time, eta), end='')
+    print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}{}###'
+          .format(epoch, progress, loss, elapsed_time, eta, prediction), end='')
     sys.stdout.flush()
 
 
-def write_predictions_to_file(from_int, pad, dataset_name, targets, predictions):
+def translate(array, from_int, sep, pad):
+    return sep.join((from_int[i] for i in array if from_int[i] != pad))
+
+
+def write_predictions_to_file(from_int, pad, sep, dataset_name, targets, predictions):
     filename = 'current.{0}.txt'.format(dataset_name)
     filepath = os.path.join(folder, filename)
     with open(filepath, 'w') as handle:
         for prediction_array, target_array in zip(predictions, targets):
             for prediction, target in zip(prediction_array, target_array):
                 for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = ''.join([from_int[idx] for idx in arr.ravel()
-                                      if from_int[idx] != pad])
+                    values = translate(arr.ravel(), from_int, sep, pad)
                     handle.write(label + values + '\n')
 
 
@@ -200,9 +203,10 @@ if __name__ == '__main__':
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
-        print('\n###\t{:10}{:10}{:10}{:10}{:10}###'
-              .format('epoch', 'progress', 'loss', 'runtime', 'ETA'))
+        print('\n###\t{:10}{:10}{:10}{:10}{:10}{}###'
+              .format('epoch', 'progress', 'loss', 'runtime', 'ETA', 'sample prediction'))
         start_time = time.time()
+        sample_prediction = None
         instances_processed = 0
         for set_name in list(Datasets._fields):
             predictions, targets = [], []
@@ -214,7 +218,6 @@ if __name__ == '__main__':
                 instances = map(np.load, filepaths)
                 assert instances[0].shape[0] == instances[1].shape[0]
                 for articles, titles in get_batches(instances):
-                    assert type(articles) == type(titles) == np.ndarray, str(type(articles), type(titles))
                     if set_name == 'train':
                         bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
@@ -223,17 +226,30 @@ if __name__ == '__main__':
                                                new_loss,
                                                instances_processed,
                                                num_instances)
+
+                        if sample_prediction is None or time.time() - tic > 10:
+                            tic = time.time()
+                            sample_prediction = translate(bucket_predictions[0, :],
+                                                          data.from_int,
+                                                          data.SEP,
+                                                          data.PAD)
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,
                                        loss,
-                                       start_time)
+                                       start_time,
+                                       sample_prediction)
                     else:
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
             rnn.save(folder)
-            write_predictions_to_file(data.from_int, data.PAD, set_name, targets, predictions)
+            write_predictions_to_file(data.from_int,
+                                      data.PAD,
+                                      data.SEP,
+                                      set_name,
+                                      targets,
+                                      predictions)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)

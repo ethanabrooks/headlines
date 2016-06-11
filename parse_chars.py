@@ -38,6 +38,7 @@ class Data:
         self.vocsize = self.nclasses
         self.num_train = 0
         self.PAD, self.GO = PAD, GO
+        self.SEP = ''
 
 """ functions """
 
