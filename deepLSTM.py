@@ -5,19 +5,11 @@ import pickle
 from functools import partial
 
 import numpy as np
-import tensorflow as tf
+import theano
+import theano.tensor as T
 
 int32 = 'int32'
 
-optimizers = {
-    1: tf.train.GradientDescentOptimizer(.1),
-    2: tf.train.AdadeltaOptimizer(),
-    3: tf.train.AdagradOptimizer(.01),
-    4: tf.train.MomentumOptimizer(.1, 1.),
-    5: tf.train.AdamOptimizer(.1),
-    6: tf.train.FtrlOptimizer(.1),
-    7: tf.train.RMSPropOptimizer(.1)
-}
 
 optimizer = optimizers[3]
 
@@ -34,12 +26,15 @@ class Model(object):
                  n_memory_slots=8,
                  go_code=1):
 
+        self.num_cells = 10
+        self.cell_depth = 3
         self.buckets = dict()
+        self.cell = tf.nn.rnn_cell.GRUCell(self.num_cells)
 
     def encode(self, articles):
-        outputs_per_token = self.deepLSTM(self.embed(articles))
-        attention = map(self.pay_attention, outputs_per_token)
-        outputs_per_token, attention = map(tf.pack, outputs_per_token, attention)
+        multicell = rnn_cell.MultiRNNCell([self.cell] * self.cell_depth)
+        outputs_per_token = tf.nn.dynamic_rnn(multicell, self.embed(articles))
+        attention = self.attention(outputs_per_token)
         return tf.matmul(outputs_per_token, attention)
 
     def decode_train(self, articles_summary, titles):

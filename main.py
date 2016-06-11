@@ -72,7 +72,7 @@ def pickle(var_name):
 
 
 def unpickle(var_name):
-    with open(var_name + '.pkl') as handle:
+    with open(var_name + '.pkl', 'r') as handle:
         return load(handle)
 
 
@@ -228,6 +228,8 @@ if __name__ == '__main__':
                                        loss,
                                        start_time)
                     else:
+                        pickle('articles')
+                        pickle('titles')
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)

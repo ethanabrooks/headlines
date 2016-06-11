@@ -6,13 +6,11 @@ import theano.tensor as T
 import numpy as np
 import time
 import sys
-from main import pickle, unpickle, evaluate
 
-t, p = map(unpickle, ('targets', 'predictions'))
-evaluate(p, t)
+from main import unpickle
 
-# function = theano.function(inputs=[], outputs=[t, dimshuffle, flatten, y])
-# for result in function():
-#     print('-' * 10)
-#     print(result)
-    # print(result.shape)
+articles = unpickle('articles')
+titles = unpickle('titles')
+
+
+print()
