@@ -259,8 +259,8 @@ class Model(object):
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
-                                     name='infer',
-                                     outputs=y_max.T)
+                                     outputs=y_max.T,
+                                     name='infer')
 
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}

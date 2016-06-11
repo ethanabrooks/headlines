@@ -214,6 +214,7 @@ if __name__ == '__main__':
                 instances = map(np.load, filepaths)
                 assert instances[0].shape[0] == instances[1].shape[0]
                 for articles, titles in get_batches(instances):
+                    assert type(articles) == type(titles) == np.ndarray, str(type(articles), type(titles))
                     if set_name == 'train':
                         bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
@@ -228,8 +229,6 @@ if __name__ == '__main__':
                                        loss,
                                        start_time)
                     else:
-                        pickle('articles')
-                        pickle('titles')
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
