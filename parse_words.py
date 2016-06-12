@@ -112,7 +112,7 @@ def print_stats(data):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_instances', type=int, default=100000,
+    parser.add_argument('--num_instances', type=int, default=2000000,
                         help='number of instances to use in Jeopardy dataset')
     parser.add_argument('--size_vocab', type=int, default=10000,
                         help='number of words in vocab')

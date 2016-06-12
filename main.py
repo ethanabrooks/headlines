@@ -102,6 +102,8 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time, 
         return ":".join((str(int(t)) for t in (hours, minutes, seconds)))
 
     def scientific_notation(x):
+        if np.isnan(x):
+            return 'NaN'
         exp = int(np.log10(x))
         sign = "+"
         if x < 1:
@@ -118,8 +120,8 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time, 
     else:
         eta = None
     elapsed_time, eta = map(format_time, (elapsed_time, eta))
-    print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}{}###'
-          .format(epoch, progress, loss, elapsed_time, eta, prediction), end='')
+    print('\r###\t{:<10d}{:<10.1%}{:<10}{:<10}{:<10}{}'
+          .format(epoch, progress, loss, elapsed_time, eta, prediction[:100]), end='')
     sys.stdout.flush()
 
 
@@ -204,7 +206,7 @@ if __name__ == '__main__':
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
-        print('\n###\t{:10}{:10}{:10}{:10}{:10}{}###'
+        print('\n###\t{:10}{:10}{:10}{:10}{:10}{}'
               .format('epoch', 'progress', 'loss', 'runtime', 'ETA', 'sample prediction'))
         start_time = time.time()
         sample_prediction = None
@@ -230,7 +232,7 @@ if __name__ == '__main__':
 
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()
-                            print('\n')
+                            print('')
                             sample_prediction = translate(bucket_predictions[0, :],
                                                           data.from_int,
                                                           data.SEP,
