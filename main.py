@@ -201,7 +201,9 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[data.GO])
+    rnn.print_params()
     rnn.load(folder)
+    rnn.print_params()
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -238,7 +240,8 @@ if __name__ == '__main__':
                                                           data.SEP,
                                                           data.PAD)
                             if np.isnan(loss):
-                                rnn.load(folder)
+                                rnn.print_params()
+                                exit(1)
                             else:
                                 rnn.save(folder)
                         print_progress(epoch,

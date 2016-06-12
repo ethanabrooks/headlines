@@ -11,6 +11,7 @@ import keras
 from keras.engine import Input
 from keras.layers import Dense, GRU, SimpleRNN
 from keras.models import Sequential
+import seq2seq.layers.decoders
 
 batch_size = 2
 input_dim = 3
@@ -28,6 +29,10 @@ model.add(SimpleRNN(output_dim,
                     input_shape=(timesteps, input_dim),
                     return_sequences=True,
                     unroll=True))
+# model.add(SimpleRNN(output_dim,
+#                     input_shape=(timesteps, input_dim),
+#                     return_sequences=True,
+#                     unroll=True))
 model.compile(loss='categorical_crossentropy',
               optimizer='sgd',
               metrics=['accuracy'])

@@ -281,7 +281,6 @@ if __name__ == '__main__':
     rnn = Model()
     rnn.load('main')
     for result in rnn.learn(articles, titles):
-        pass
         print('-' * 10)
         print(result)
         print(result.shape)

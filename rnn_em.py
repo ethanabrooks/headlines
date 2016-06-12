@@ -4,12 +4,13 @@ import os
 import pickle
 from functools import partial
 
-import lasagne
 import numpy
 import theano
 from theano import tensor as T
 from theano.compile.nanguardmode import NanGuardMode
 from theano.printing import Print
+from lasagne import objectives
+from lasagne.updates import norm_constraint, adadelta
 
 int32 = 'int32'
 
@@ -24,7 +25,7 @@ def cosine_dist(tensor, matrix):
     return T.batched_dot(matrix, tensor) / (matrix_norm * tensor_norm + 1)
 
 
-# noinspection PyPep8Naming,PyUnresolvedReferences
+# noinspection PyPep8Naming
 class Model(object):
     def __init__(self,
                  hidden_size=100,
@@ -106,6 +107,7 @@ class Model(object):
             self.names.remove(key)
 
         self.params = [eval('self.' + name) for name in self.names]
+
         # self.M_a *= .1
         # self.M_t *= .1
 
@@ -237,15 +239,20 @@ class Model(object):
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
-        loss = lasagne.objectives.aggregate(losses, weights, mode='sum')
-        updates = lasagne.updates.adadelta(loss, self.params)
+        loss = objectives.aggregate(losses, weights, mode='sum')
+        updates = adadelta(loss, self.params)
+        clipped_updates = {}
+        for param in updates:
+            grad = updates[param]
+            clipped_updates[param] = T.switch(T.isnan(grad), 0,
+                                              grad.clipped(-1, 1))
 
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max.T, loss],
-                                     updates=updates,
+                                     updates=clipped_updates,
                                      allow_input_downcast=True,
                                      name='learn',
-                                     mode=NanGuardMode(nan_is_error=True))
+                                     mode=NanGuardMode())
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
@@ -271,8 +278,12 @@ class Model(object):
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
-            print(params)
             self.__dict__.update(params)
+
+    def print_params(self):
+        for param in self.params:
+            print(param.name)
+            print(theano.function([], param.mean())())
 
 
 if __name__ == '__main__':
