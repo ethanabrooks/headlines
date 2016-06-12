@@ -202,7 +202,6 @@ if __name__ == '__main__':
                 s.n_memory_slots,
                 data.to_int[data.GO])
 
-    rnn.load(folder)
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
@@ -237,6 +236,8 @@ if __name__ == '__main__':
                                                           data.from_int,
                                                           data.SEP,
                                                           data.PAD)
+                            if not np.isnan(loss):
+                                rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,
@@ -247,7 +248,6 @@ if __name__ == '__main__':
                         bucket_predictions = rnn.infer(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
-            rnn.save(folder)
             write_predictions_to_file(data.from_int,
                                       data.PAD,
                                       data.SEP,
