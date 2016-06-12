@@ -106,7 +106,7 @@ class Model(object):
             setattr(self, key, repeat_for_each_instance(self.__getattribute__(key)))
             self.names.remove(key)
 
-        self.params = [eval('self.' + name) for name in self.names]
+        self.params = self.collect_params()
 
         self.M_a *= .01
         self.M_t *= .01
@@ -245,14 +245,16 @@ class Model(object):
         for param in updates:
             grad = updates[param]
             clipped_grad = T.switch(T.isnan(grad), 0, grad.clip(-1, 1))
+            # clipped_grad = Print('clipped_grad', ['max'])(clipped_grad)
+            # clipped_grad = Print('clipped_grad', ['min'])(clipped_grad)
             clipped_updates.append((param, clipped_grad))
 
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max.T, loss],
                                      updates=clipped_updates,
                                      allow_input_downcast=True,
-                                     name='learn',
-                                     mode=NanGuardMode())
+                                     name='learn')
+                                     # mode=NanGuardMode())
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
@@ -279,20 +281,35 @@ class Model(object):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
             self.__dict__.update(params)
+            self.params = self.collect_params()
+
+    def collect_params(self):
+        return [eval('self.' + name) for name in self.names]
 
     def print_params(self):
         for param in self.params:
-            print(param.name)
-            print(theano.function([], param.mean())())
+            mean = theano.function([], param.mean())()
+            print(param.name + ': ' + str(mean))
 
 
 if __name__ == '__main__':
-    articles = numpy.load("articles.npy")
-    titles = numpy.load("titles.npy")
+    from main import unpickle
+
+    params = unpickle('main/params')
+    for key in params:
+        mean = theano.function([], params[key].mean())()
+        print(key + ': ' + str(mean))
+    print('Load')
+    print('----')
     rnn = Model()
-    rnn.load('.')
-    for result in rnn.test(articles, titles):
-        pass
-        print('-' * 10)
-        print(result)
-        print(result.shape)
+    rnn.load('main')
+    rnn.print_params()
+    # articles = numpy.load("articles.npy")
+    # titles = numpy.load("titles.npy")
+    # rnn = Model()
+    # rnn.load('.')
+    # for result in rnn.test(articles, titles):
+    #     pass
+    #     print('-' * 10)
+    #     print(result)
+    #     print(result.shape)

@@ -6,6 +6,7 @@ import random
 import subprocess
 import sys
 import time
+import traceback
 from collections import namedtuple
 from functools import partial
 import numpy as np
@@ -201,9 +202,10 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[data.GO])
-    rnn.print_params()
+    # rnn.print_params()
     # rnn.load(folder)
     # rnn.print_params()
+    # exit(0)
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -228,6 +230,7 @@ if __name__ == '__main__':
                             bucket_predictions, new_loss = rnn.learn(articles, titles)
                         except AssertionError:
                             rnn.print_params()
+                            traceback.print_exc()
                             exit(1)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
@@ -243,7 +246,8 @@ if __name__ == '__main__':
                                                           data.from_int,
                                                           data.SEP,
                                                           data.PAD)
-                            rnn.save(folder)
+                            if not np.isnan(loss):
+                                rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,
