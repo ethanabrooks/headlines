@@ -202,11 +202,6 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[data.GO])
-    # rnn.print_params()
-    # rnn.load(folder)
-    # rnn.print_params()
-    # exit(0)
-
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
@@ -226,12 +221,7 @@ if __name__ == '__main__':
                 assert instances[0].shape[0] == instances[1].shape[0]
                 for articles, titles in get_batches(instances):
                     if set_name == 'train':
-                        try:
-                            bucket_predictions, new_loss = rnn.learn(articles, titles)
-                        except AssertionError:
-                            rnn.print_params()
-                            traceback.print_exc()
-                            exit(1)
+                        bucket_predictions, new_loss = rnn.learn(articles, titles)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
                         loss = running_average(loss,
@@ -239,6 +229,10 @@ if __name__ == '__main__':
                                                instances_processed,
                                                num_instances)
 
+                        if np.isnan(loss):
+                            print('loss is nan')
+                            rnn.print_params()
+                            exit(1)
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()
                             print('')
@@ -246,8 +240,7 @@ if __name__ == '__main__':
                                                           data.from_int,
                                                           data.SEP,
                                                           data.PAD)
-                            if not np.isnan(loss):
-                                rnn.save(folder)
+                            rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,

@@ -59,13 +59,13 @@ class Model(object):
             'W': (hidden_size, nclasses),
             'h0': hidden_size,
             'w_a': (n_article_slots,),
-            'w_t': (n_title_slots,),
-            'M_a': (memory_size, n_article_slots),
-            'M_t': (memory_size, n_title_slots)
+            'w_t': (n_title_slots,)
         }
 
         zeros = {
             # attr: shape
+            'M_a': (memory_size, n_article_slots),
+            'M_t': (memory_size, n_title_slots),
             'bg_a': n_article_slots,
             'bg_t': n_title_slots,
             'bk': memory_size,
@@ -96,6 +96,7 @@ class Model(object):
             setattr(self, key, zeros_shared(key))
 
         self.names = randoms.keys() + zeros.keys()
+        self.names.remove('emb')  # no need to save or update embeddings
         scan_vars = 'h0 w_a M_a w_t M_t'.split()
 
         def repeat_for_each_instance(param):
@@ -105,11 +106,6 @@ class Model(object):
         for key in scan_vars:
             setattr(self, key, repeat_for_each_instance(self.__getattribute__(key)))
             self.names.remove(key)
-
-        self.params = self.collect_params()
-
-        self.M_a *= .01
-        self.M_t *= .01
 
         def recurrence(i,
                        h_tm1,
@@ -168,7 +164,10 @@ class Model(object):
 
                 # eqn 13
                 beta = T.dot(h_tm1, self.Wb) + self.bb
-                beta = T.log(1 + T.exp(beta))
+                # beta = T.log(1 + T.exp(beta))
+                # NOTE: the above equation is from the original paper.
+                # However, as the model trains, the value of beta tends to increase and
+                # therefore beta -> T.log(1 + T.exp(beta))
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
 
                 # eqn 12
@@ -240,13 +239,11 @@ class Model(object):
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
         loss = objectives.aggregate(losses, weights, mode='sum')
-        updates = adadelta(loss, self.params)
+        updates = adadelta(loss, self.params())
         clipped_updates = []
         for param in updates:
             grad = updates[param]
             clipped_grad = T.switch(T.isnan(grad), 0, grad.clip(-1, 1))
-            # clipped_grad = Print('clipped_grad', ['max'])(clipped_grad)
-            # clipped_grad = Print('clipped_grad', ['min'])(clipped_grad)
             clipped_updates.append((param, clipped_grad))
 
         self.learn = theano.function(inputs=[articles, titles],
@@ -254,7 +251,6 @@ class Model(object):
                                      updates=clipped_updates,
                                      allow_input_downcast=True,
                                      name='learn')
-                                     # mode=NanGuardMode())
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
@@ -273,7 +269,7 @@ class Model(object):
                                      name='infer')
 
     def save(self, folder):
-        params = {name: value for name, value in zip(self.names, self.params)}
+        params = {name: value for name, value in zip(self.names, self.params())}
         with open(os.path.join(folder, 'params.pkl'), 'w') as handle:
             pickle.dump(params, handle)
 
@@ -281,35 +277,28 @@ class Model(object):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
             self.__dict__.update(params)
-            self.params = self.collect_params()
 
-    def collect_params(self):
-        return [eval('self.' + name) for name in self.names]
+    def params(self):
+        res = []
+        for name in self.names:
+            param = eval('self.' + name)
+            res.append(param)
+        return res
 
     def print_params(self):
-        for param in self.params:
+        for param in self.params():
             mean = theano.function([], param.mean())()
             print(param.name + ': ' + str(mean))
 
 
 if __name__ == '__main__':
-    from main import unpickle
-
-    params = unpickle('main/params')
-    for key in params:
-        mean = theano.function([], params[key].mean())()
-        print(key + ': ' + str(mean))
-    print('Load')
-    print('----')
+    articles = numpy.load("npy/articles.npy")
+    titles = numpy.load("npy/titles.npy")
     rnn = Model()
     rnn.load('main')
     rnn.print_params()
-    # articles = numpy.load("articles.npy")
-    # titles = numpy.load("titles.npy")
-    # rnn = Model()
-    # rnn.load('.')
-    # for result in rnn.test(articles, titles):
-    #     pass
-    #     print('-' * 10)
-    #     print(result)
-    #     print(result.shape)
+    for result in rnn.learn(articles, titles):
+        pass
+        print('-' * 10)
+        print(result)
+        print(result.shape)
