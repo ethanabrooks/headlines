@@ -245,7 +245,8 @@ class Model(object):
                                      outputs=[y_max.T, loss],
                                      updates=updates,
                                      allow_input_downcast=True,
-                                     name='learn')
+                                     name='learn',
+                                     mode=NanGuardMode(nan_is_error=True))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
@@ -271,22 +272,16 @@ class Model(object):
     def load(self, folder):
         with open(os.path.join(folder, 'params.pkl')) as handle:
             params = pickle.load(handle)
-            print(params)
             self.__dict__.update(params)
 
 
 if __name__ == '__main__':
-    from main import unpickle
-    params = unpickle('params', dir='main')
-    for param in params:
-        print_shape = theano.function([], param.shape)
-        print(print_shape())
-    # articles = numpy.load("articles.npy")
-    # titles = numpy.load("titles.npy")
-    # rnn = Model()
-    # rnn.load('.')
-    # for result in rnn.test(articles, titles):
-    #     pass
-    #     print('-' * 10)
-    #     print(result)
-    #     print(result.shape)
+    articles = numpy.load("npy/articles.npy")
+    titles = numpy.load("npy/titles.npy")
+    rnn = Model()
+    rnn.load('main')
+    for result in rnn.learn(articles, titles):
+        pass
+        print('-' * 10)
+        print(result)
+        print(result.shape)

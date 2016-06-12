@@ -244,7 +244,8 @@ class Model(object):
                                      outputs=[y_max.T, loss],
                                      updates=updates,
                                      allow_input_downcast=True,
-                                     name='learn')
+                                     name='learn',
+                                     mode=NanGuardMode(nan_is_error=True))
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
