@@ -202,8 +202,8 @@ if __name__ == '__main__':
                 s.n_memory_slots,
                 data.to_int[data.GO])
     rnn.print_params()
-    rnn.load(folder)
-    rnn.print_params()
+    # rnn.load(folder)
+    # rnn.print_params()
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -224,7 +224,11 @@ if __name__ == '__main__':
                 assert instances[0].shape[0] == instances[1].shape[0]
                 for articles, titles in get_batches(instances):
                     if set_name == 'train':
-                        bucket_predictions, new_loss = rnn.learn(articles, titles)
+                        try:
+                            bucket_predictions, new_loss = rnn.learn(articles, titles)
+                        except AssertionError:
+                            rnn.print_params()
+                            exit(1)
                         num_instances = articles.shape[0]
                         instances_processed += num_instances
                         loss = running_average(loss,
@@ -239,11 +243,7 @@ if __name__ == '__main__':
                                                           data.from_int,
                                                           data.SEP,
                                                           data.PAD)
-                            if np.isnan(loss):
-                                rnn.print_params()
-                                exit(1)
-                            else:
-                                rnn.save(folder)
+                            rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,
                                        data.num_train,

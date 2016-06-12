@@ -108,8 +108,8 @@ class Model(object):
 
         self.params = [eval('self.' + name) for name in self.names]
 
-        # self.M_a *= .1
-        # self.M_t *= .1
+        self.M_a *= .01
+        self.M_t *= .01
 
         def recurrence(i,
                        h_tm1,
@@ -241,11 +241,11 @@ class Model(object):
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
         loss = objectives.aggregate(losses, weights, mode='sum')
         updates = adadelta(loss, self.params)
-        clipped_updates = {}
+        clipped_updates = []
         for param in updates:
             grad = updates[param]
-            clipped_updates[param] = T.switch(T.isnan(grad), 0,
-                                              grad.clipped(-1, 1))
+            clipped_grad = T.switch(T.isnan(grad), 0, grad.clip(-1, 1))
+            clipped_updates.append((param, clipped_grad))
 
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max.T, loss],
