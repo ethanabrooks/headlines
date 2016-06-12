@@ -200,7 +200,7 @@ if __name__ == '__main__':
                 s.n_memory_slots,
                 data.to_int[data.GO])
 
-    rnn.load('.')
+    rnn.load(folder)
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
     for epoch in range(s.n_epochs):
