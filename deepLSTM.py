@@ -26,7 +26,8 @@ Y_batch = np.arange(
 model = Sequential()
 model.add(SimpleRNN(output_dim,
                     input_shape=(timesteps, input_dim),
-                    return_sequences=True))
+                    return_sequences=True,
+                    unroll=True))
 model.compile(loss='categorical_crossentropy',
               optimizer='sgd',
               metrics=['accuracy'])

@@ -66,13 +66,13 @@ Score = namedtuple("score", "value epoch")
 """ functions """
 
 
-def pickle(var_name):
-    with open(var_name + '.pkl', 'w') as handle:
+def pickle(var_name, dir=''):
+    with open(os.path.join(dir, var_name + '.pkl', 'w')) as handle:
         dump(eval(var_name), handle)
 
 
-def unpickle(var_name):
-    with open(var_name + '.pkl', 'r') as handle:
+def unpickle(var_name, dir=''):
+    with open(os.path.join(dir, var_name + '.pkl'), 'r') as handle:
         return load(handle)
 
 
@@ -201,6 +201,7 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[data.GO])
+    rnn.load(folder)
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -236,7 +237,9 @@ if __name__ == '__main__':
                                                           data.from_int,
                                                           data.SEP,
                                                           data.PAD)
-                            if not np.isnan(loss):
+                            if np.isnan(loss):
+                                rnn.load(folder)
+                            else:
                                 rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,

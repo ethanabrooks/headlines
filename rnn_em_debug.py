@@ -11,6 +11,7 @@ from theano import tensor as T
 from theano.compile.nanguardmode import NanGuardMode
 from theano.printing import Print
 
+
 int32 = 'int32'
 
 
@@ -56,15 +57,15 @@ class Model(object):
             'Wx': (window_size * embedding_dim, hidden_size),
             'Wh': (memory_size, hidden_size),
             'W': (hidden_size, nclasses),
-            'h0': hidden_size
+            'h0': hidden_size,
+            'w_a': (n_article_slots,),
+            'w_t': (n_title_slots,),
+            'M_a': (memory_size, n_article_slots),
+            'M_t': (memory_size, n_title_slots)
         }
 
         zeros = {
             # attr: shape
-            'w_a': (n_article_slots,),
-            'w_t': (n_title_slots,),
-            'M_a': (memory_size, n_article_slots),
-            'M_t': (memory_size, n_title_slots),
             'bg_a': n_article_slots,
             'bg_t': n_title_slots,
             'bk': memory_size,
@@ -76,20 +77,23 @@ class Model(object):
             'b': nclasses,
         }
 
-        def random_shared(shape):
+        def random_shared(name):
+            shape = randoms[name]
             return theano.shared(
-                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX))
+                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX),
+                name=name)
 
-        def zeros_shared(shape):
-            return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX))
+        def zeros_shared(name):
+            shape = zeros[name]
+            return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX), name=name)
 
         for key in randoms:
             # create an attribute with associated shape and random values
-            setattr(self, key, random_shared(randoms[key]))
+            setattr(self, key, random_shared(key))
 
         for key in zeros:
             # create an attribute with associated shape and values equal to 0
-            setattr(self, key, zeros_shared(zeros[key]))
+            setattr(self, key, zeros_shared(key))
 
         self.names = randoms.keys() + zeros.keys()
         scan_vars = 'h0 w_a M_a w_t M_t'.split()
@@ -103,8 +107,17 @@ class Model(object):
             self.names.remove(key)
 
         self.params = [eval('self.' + name) for name in self.names]
+        # self.M_a *= .1
+        # self.M_t *= .1
 
-        def recurrence(i, h_tm1, w_a, M_a, w_t=None, M_t=None, is_training=True, is_article=True):
+        def recurrence(i,
+                       h_tm1,
+                       w_a,
+                       M_a,
+                       w_t=None,
+                       M_t=None,
+                       is_training=True,
+                       is_article=True):
             """
             notes
             Headers from paper in all caps
@@ -164,7 +177,6 @@ class Model(object):
                 return (1 - g) * w + g * w_hat  # [instances, mem]
 
             w_a = get_attention(self.Wg_a, self.bg_a, M_a, w_a)  # [instances, n_article_slots]
-            w_a = Print('w_a')(w_a)
             if not is_article:
                 w_t = get_attention(self.Wg_t, self.bg_t, M_t, w_t)  # [instances, n_title_slots]
 
@@ -203,7 +215,7 @@ class Model(object):
             return [y, y_max, next_idxs, h] + attention_and_memory
 
         read_article = partial(recurrence, is_article=True)
-        i0 = T.constant(0, dtype=int32)
+        i0 = T.constant(0, dtype=int32, name='first_value_of_i')
         outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
 
         [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
@@ -214,43 +226,42 @@ class Model(object):
         produce_title = partial(recurrence, is_training=True, is_article=False)
         outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
         outputs_info.extend([self.w_t, self.M_t])
+        bucket_width = titles.shape[1] - 1  # subtract 1 because <go> is omitted in y_true
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
                                                       outputs_info=outputs_info,
-                                                      n_steps=titles.shape[1],
+                                                      n_steps=bucket_width,
                                                       name='train_scan')
 
         # loss and updates
-        y = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
-        y_true = titles.ravel()
+        y_flatten = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
+        y_true = titles[:, 1:].ravel()  # [:, 1:] in order to omit <go>
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
-        losses = T.nnet.categorical_crossentropy(y, y_true)
+        losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
         loss = lasagne.objectives.aggregate(losses, weights, mode='sum')
         updates = lasagne.updates.adadelta(loss, self.params)
 
         self.learn = theano.function(inputs=[articles, titles],
-                                     outputs=[y_max, loss],
+                                     outputs=[y_max.T, loss],
                                      updates=updates,
-                                     allow_input_downcast=True)
-                                     # mode=NanGuardMode(nan_is_error=True,
-                                     #                   inf_is_error=True,
-                                     #                   big_is_error=True))
+                                     allow_input_downcast=True,
+                                     name='learn')
 
         produce_title_test = partial(recurrence, is_training=False, is_article=False)
 
         self.test = theano.function(inputs=[articles, titles],
-                                    outputs=produce_title(*outputs_info[2:]),
+                                    outputs=[y_max.T],
                                     on_unused_input='ignore')
-        self.test = self.learn
 
         outputs_info[2] = T.zeros([n_instances], dtype=int32) + go_code
         [_, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title_test,
                                                       outputs_info=outputs_info,
-                                                      n_steps=titles.shape[1],
+                                                      n_steps=bucket_width,
                                                       name='test_scan')
 
         self.infer = theano.function(inputs=[articles, titles],
-                                     outputs=y_max)
+                                     outputs=y_max.T,
+                                     name='infer')
 
     def save(self, folder):
         params = {name: value for name, value in zip(self.names, self.params)}
@@ -265,12 +276,17 @@ class Model(object):
 
 
 if __name__ == '__main__':
-    rnn = Model()
-    rnn.load('.')
-    articles = numpy.load("articles.npy")
-    titles = numpy.load("titles.npy")
-    print('self.W shape: ', theano.function([], outputs=rnn.W)().shape)
-    for result in rnn.test(articles, titles):
-        print('-' * 10)
-        print(result)
-        print(result.shape)
+    from main import unpickle
+    params = unpickle('params', dir='main')
+    for param in params:
+        print_shape = theano.function([], param.shape)
+        print(print_shape())
+    # articles = numpy.load("articles.npy")
+    # titles = numpy.load("titles.npy")
+    # rnn = Model()
+    # rnn.load('.')
+    # for result in rnn.test(articles, titles):
+    #     pass
+    #     print('-' * 10)
+    #     print(result)
+    #     print(result.shape)
