@@ -11,13 +11,11 @@ up_net = GRU(dim)
 down_net = GRU(dim)
 mlp_out = Dense(nclasses)
 
-model = Sequential()
-model.add()
-class FeedbackLayer(Layer):
+class LadderNetwork(Layer):
     def __init__(self, hidden_dim, depth, **kwargs):
         self.hidden_dim = hidden_dim
         self.depth = depth
-        super(FeedbackLayer, self).__init__(**kwargs)
+        super(LadderNetwork, self).__init__(**kwargs)
 
     def build(self, input_shape):  # (n_samples, timesteps, input_dim)
         input_dim = input_shape[1]

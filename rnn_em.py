@@ -191,7 +191,7 @@ class Model(object):
                 f = 1. - w_update * e  # [instances, mem]
 
                 # eqn 16
-                v = T.dot(h, self.Wv) + self.bv  # [instances, memory_size]
+                v = T.tanh(T.dot(h, self.Wv) + self.bv)  # [instances, memory_size]
 
                 # need to add broadcast layers for memory update
                 f = f.dimshuffle(0, 'x', 1)  # [instances, 1, mem]

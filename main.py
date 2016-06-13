@@ -229,8 +229,10 @@ if __name__ == '__main__':
                                                instances_processed,
                                                num_instances)
 
-                        if np.isnan(loss):
-                            print('loss is nan')
+                        if np.isinf(loss) or np.isnan(loss):
+                            print('\nloss is ' + str(loss))
+                            rnn.print_params()
+                            exit(1)
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()
                             print('')
