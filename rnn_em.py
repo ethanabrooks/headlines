@@ -47,6 +47,10 @@ class Model(object):
         randoms = {
             # attr: shape
             'emb': (num_embeddings + 1, embedding_dim),
+            'M_a': (memory_size, n_article_slots),
+            'M_t': (memory_size, n_title_slots),
+            'w_a': (n_article_slots,),
+            'w_t': (n_title_slots,),
             'Wg_a': (window_size * embedding_dim, n_article_slots),
             'Wg_t': (window_size * embedding_dim, n_title_slots),
             'Wk': (hidden_size, memory_size),
@@ -57,15 +61,11 @@ class Model(object):
             'Wx': (window_size * embedding_dim, hidden_size),
             'Wh': (memory_size, hidden_size),
             'W': (hidden_size, nclasses),
-            'h0': hidden_size,
-            'w_a': (n_article_slots,),
-            'w_t': (n_title_slots,)
+            'h0': hidden_size
         }
 
         zeros = {
             # attr: shape
-            'M_a': (memory_size, n_article_slots),
-            'M_t': (memory_size, n_title_slots),
             'bg_a': n_article_slots,
             'bg_t': n_title_slots,
             'bk': memory_size,
