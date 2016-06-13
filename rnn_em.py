@@ -245,7 +245,7 @@ class Model(object):
 
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max.T, loss],
-                                     updates=clipped_updates,
+                                     updates=updates,
                                      allow_input_downcast=True,
                                      name='learn')
 
@@ -276,11 +276,7 @@ class Model(object):
             self.__dict__.update(params)
 
     def params(self):
-        res = []
-        for name in self.names:
-            param = eval('self.' + name)
-            res.append(param)
-        return res
+        return [eval('self.' + name) for name in self.names]
 
     def print_params(self):
         for param in self.params():
