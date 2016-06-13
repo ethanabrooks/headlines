@@ -231,7 +231,6 @@ if __name__ == '__main__':
 
                         if np.isnan(loss):
                             print('loss is nan')
-                            rnn.print_params()
                             exit(1)
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()

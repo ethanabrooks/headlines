@@ -164,10 +164,7 @@ class Model(object):
 
                 # eqn 13
                 beta = T.dot(h_tm1, self.Wb) + self.bb
-                # beta = T.log(1 + T.exp(beta))
-                # NOTE: the above equation is from the original paper.
-                # However, as the model trains, the value of beta tends to increase and
-                # therefore beta -> T.log(1 + T.exp(beta))
+                beta = T.nnet.softplus(beta)
                 beta = T.addbroadcast(beta, 1)  # [instances, 1]
 
                 # eqn 12
