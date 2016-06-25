@@ -157,6 +157,7 @@ class Model(object):
 
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
+                bg = Print('bg')(bg)
                 g = T.nnet.sigmoid(T.dot(x_i, Wg) + bg)  # [instances, mem]
 
                 # eqn 11

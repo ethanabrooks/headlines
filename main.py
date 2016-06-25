@@ -206,7 +206,6 @@ if __name__ == '__main__':
     rnn.print_params()
     rnn.load('backup')
     rnn.print_params()
-    exit(0)
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
@@ -216,47 +215,48 @@ if __name__ == '__main__':
         start_time = time.time()
         sample_prediction = None
         instances_processed = 0
-        for set_name in list(Datasets._fields):
-            predictions, targets = [], []
-            loss = None
-            for bucket_dir in os.listdir(set_name):
-                path = os.path.join(set_name, bucket_dir)
-                filepaths = [os.path.join(path, name + '.npy')
-                             for name in Instance._fields]
-                instances = map(np.load, filepaths)
-                assert instances[0].shape[0] == instances[1].shape[0]
-                for articles, titles in get_batches(instances):
-                    if set_name == 'train':
-                        bucket_predictions, new_loss = rnn.learn(articles, titles)
-                        num_instances = articles.shape[0]
-                        instances_processed += num_instances
-                        loss = running_average(loss,
-                                               new_loss,
-                                               instances_processed,
-                                               num_instances)
+        # for set_name in list(Datasets._fields):
+        set_name = 'test'
+        predictions, targets = [], []
+        loss = None
+        for bucket_dir in os.listdir(set_name):
+            path = os.path.join(set_name, bucket_dir)
+            filepaths = [os.path.join(path, name + '.npy')
+                         for name in Instance._fields]
+            instances = map(np.load, filepaths)
+            assert instances[0].shape[0] == instances[1].shape[0]
+            for articles, titles in get_batches(instances):
+                if set_name == 'train':
+                    bucket_predictions, new_loss = rnn.learn(articles, titles)
+                    num_instances = articles.shape[0]
+                    instances_processed += num_instances
+                    loss = running_average(loss,
+                                           new_loss,
+                                           instances_processed,
+                                           num_instances)
 
-                        if np.isinf(loss) or np.isnan(loss):
-                            print('\nloss is ' + str(loss))
-                            rnn.print_params()
-                            exit(1)
-                        if sample_prediction is None or time.time() - tic > 10:
-                            tic = time.time()
-                            print('')
-                            sample_prediction = translate(bucket_predictions[0, :],
-                                                          data.from_int,
-                                                          data.SEP,
-                                                          data.PAD)
-                            rnn.save(folder)
-                        print_progress(epoch,
-                                       instances_processed,
-                                       data.num_train,
-                                       loss,
-                                       start_time,
-                                       sample_prediction)
-                    else:
-                        bucket_predictions = rnn.infer(articles, titles)
-                    predictions.append(bucket_predictions)
-                    targets.append(titles)
+                    if np.isinf(loss) or np.isnan(loss):
+                        print('\nloss is ' + str(loss))
+                        rnn.print_params()
+                        exit(1)
+                    if sample_prediction is None or time.time() - tic > 10:
+                        tic = time.time()
+                        print('')
+                        sample_prediction = translate(bucket_predictions[0, :],
+                                                      data.from_int,
+                                                      data.SEP,
+                                                      data.PAD)
+                        rnn.save(folder)
+                    print_progress(epoch,
+                                   instances_processed,
+                                   data.num_train,
+                                   loss,
+                                   start_time,
+                                   sample_prediction)
+                else:
+                    bucket_predictions = rnn.infer(articles, titles)
+                predictions.append(bucket_predictions)
+                targets.append(titles)
             write_predictions_to_file(data.from_int,
                                       data.PAD,
                                       data.SEP,
