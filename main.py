@@ -194,6 +194,7 @@ if __name__ == '__main__':
     random.seed(s.seed)
     data = unpickle('data')
 
+    print('loading model...')
     rnn = Model(s.hidden_size,
                 data.nclasses,
                 data.vocsize,  # num_embeddings
@@ -202,6 +203,10 @@ if __name__ == '__main__':
                 s.memory_size,
                 s.n_memory_slots,
                 data.to_int[data.GO])
+    rnn.print_params()
+    rnn.load('backup')
+    rnn.print_params()
+    exit(0)
 
     scores = {dataset_name: []
               for dataset_name in Datasets._fields}
