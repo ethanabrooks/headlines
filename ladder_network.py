@@ -47,13 +47,18 @@ def feedback(model, output_length, feedback_function=lambda x: x,
 
     (batch_size, _, output_dim) = model.input._keras_shape
     input = Input(batch_shape=(batch_size, output_dim))
-    outputs = []
-    for i in range(num_outputs):
-        def get_ith_output(tensor):
-            output = feedback_loop(tensor)
-            return output[i]
-        outputs.append(Lambda(get_ith_output)(input))
-    return Model(input, outputs)
+    # outputs = []
+    # for i in range(num_outputs):
+    #     def get_ith_output(tensor):
+    #         output = feedback_loop(tensor)
+    #         return output[i]
+    #     outputs.append(Lambda(get_ith_output, name='get_{}th_output'.format(i))(input))
+    feedback_layer = Lambda(feedback_loop,
+                            output_shape=([output_length, output_dim],
+                                          [output_length, output_dim]))
+    layer = feedback_layer(input)
+    return Model(input, layer, name='feedback_model')
+    # return Model(input, feedback_loop(input))
 
 
 batch_size = 2
