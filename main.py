@@ -202,9 +202,8 @@ if __name__ == '__main__':
                 1,  # window_size
                 s.memory_size,
                 s.n_memory_slots,
-                data.to_int[data.GO])
-    rnn.print_params()
-    rnn.load('backup')
+                data.to_int[data.GO],
+                load_dir='main')
     rnn.print_params()
 
     scores = {dataset_name: []
@@ -246,7 +245,7 @@ if __name__ == '__main__':
                                                       data.from_int,
                                                       data.SEP,
                                                       data.PAD)
-                        rnn.save(folder)
+                        # rnn.save(folder)
                     print_progress(epoch,
                                    instances_processed,
                                    data.num_train,

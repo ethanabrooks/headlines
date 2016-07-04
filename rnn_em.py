@@ -35,7 +35,8 @@ class Model(object):
                  window_size=1,  # TODO: do we want some kind of window?
                  memory_size=40,
                  n_memory_slots=8,
-                 go_code=1):
+                 go_code=1,
+                 load_dir=None):
 
         articles, titles = T.imatrices('articles', 'titles')
         n_article_slots = int(n_memory_slots / 2)  # TODO derive this from an arg
@@ -107,6 +108,11 @@ class Model(object):
             setattr(self, key, repeat_for_each_instance(self.__getattribute__(key)))
             self.names.remove(key)
 
+        if load_dir is not None:
+            with open(os.path.join(load_dir, 'params.pkl')) as handle:
+                params = pickle.load(handle)
+                self.__dict__.update(params)
+
         def recurrence(i,
                        h_tm1,
                        w_a,
@@ -157,7 +163,6 @@ class Model(object):
 
             # EXTERNAL MEMORY READ
             def get_attention(Wg, bg, M, w):
-                bg = Print('bg')(bg)
                 g = T.nnet.sigmoid(T.dot(x_i, Wg) + bg)  # [instances, mem]
 
                 # eqn 11
@@ -271,18 +276,13 @@ class Model(object):
         with open(os.path.join(folder, 'params.pkl'), 'w') as handle:
             pickle.dump(params, handle)
 
-    def load(self, folder):
-        with open(os.path.join(folder, 'params.pkl')) as handle:
-            params = pickle.load(handle)
-            self.__dict__.update(params)
-
     def params(self):
         return [eval('self.' + name) for name in self.names]
 
     def print_params(self):
-        for param in self.params():
+        for name, param in zip(self.names, self.params()):
             mean = theano.function([], param.mean())()
-            print(param.name + ': ' + str(mean))
+            print(name + ': ' + str(mean))
 
 
 if __name__ == '__main__':
