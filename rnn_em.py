@@ -37,7 +37,6 @@ class Model(object):
                  memory_size=40,
                  n_memory_slots=8,
                  go_code=1,
-                 smoothing_constant=5,
                  load_dir=None):
 
         articles, titles = T.imatrices('articles', 'titles')
@@ -190,7 +189,7 @@ class Model(object):
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
 
             # eqn 10
-            y = T.nnet.softmax(T.dot(h, self.W) + self.b + smoothing_constant)  # [instances, nclasses]
+            y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
@@ -238,7 +237,8 @@ class Model(object):
                                                       name='train_scan')
 
         # loss and updates
-        y_flatten = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
+        y_clip = T.clip(y, .01, .99)
+        y_flatten = y_clip.dimshuffle(2, 1, 0).flatten(ndim=2).T
         # y_flatten = Print('y_flatten', ['min'])(y_flatten)
         y_true = titles[:, 1:].ravel()  # [:, 1:] in order to omit <go>
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
