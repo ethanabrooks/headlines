@@ -8,6 +8,7 @@ import numpy
 import theano
 from theano import tensor as T
 from theano.compile.nanguardmode import NanGuardMode
+from theano.ifelse import ifelse
 from theano.printing import Print
 from lasagne import objectives
 from lasagne.updates import norm_constraint, adadelta
@@ -36,6 +37,7 @@ class Model(object):
                  memory_size=40,
                  n_memory_slots=8,
                  go_code=1,
+                 smoothing_constant=5,
                  load_dir=None):
 
         articles, titles = T.imatrices('articles', 'titles')
@@ -188,7 +190,7 @@ class Model(object):
             h = T.dot(c, self.Wh) + T.dot(x_i, self.Wx) + self.bh  # [instances, hidden_size]
 
             # eqn 10
-            y = T.nnet.softmax(T.dot(h, self.W) + self.b)  # [instances, nclasses]
+            y = T.nnet.softmax(T.dot(h, self.W) + self.b + smoothing_constant)  # [instances, nclasses]
 
             # EXTERNAL MEMORY UPDATE
             def update_memory(We, be, w_update, M_update):
@@ -237,17 +239,16 @@ class Model(object):
 
         # loss and updates
         y_flatten = y.dimshuffle(2, 1, 0).flatten(ndim=2).T
+        # y_flatten = Print('y_flatten', ['min'])(y_flatten)
         y_true = titles[:, 1:].ravel()  # [:, 1:] in order to omit <go>
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
+        # losses = T.switch(T.gt(losses, threshold),
+        #                   threshold + T.nnet.sigmoid(losses - threshold),
+        #                   losses)
         loss = objectives.aggregate(losses, weights, mode='sum')
         updates = adadelta(loss, self.params())
-        clipped_updates = []
-        for param in updates:
-            grad = updates[param]
-            clipped_grad = T.switch(T.isnan(grad), 0, grad.clip(-1, 1))
-            clipped_updates.append((param, clipped_grad))
 
         self.learn = theano.function(inputs=[articles, titles],
                                      outputs=[y_max.T, loss],

@@ -24,7 +24,8 @@ def get_bucket_idx(length):
 
 """ namedtuples """
 
-Instance = namedtuple("instance", "comp simp")
+doc_types = "comp simp"
+Instance = namedtuple("instance", doc_types)
 Datasets = namedtuple("datasets", "train test")
 ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
 Score = namedtuple("score", "value epoch")
@@ -127,7 +128,8 @@ if __name__ == '__main__':
     print(s)
     print('-' * 80)
 
-    data = Data()
+    with open(DATA_OBJ_FILE, 'rb') as handle:
+        data = pickle.load(handle)
     print('Bucket allocation:')
     for set_name in Datasets._fields:
         # start fresh every time
@@ -160,6 +162,7 @@ if __name__ == '__main__':
         return len(instances[set_name].comp)
     data.num_train, data.num_test = map(num, ['train', 'test'])
     data.num_instances = data.num_test + data.num_train
+    data.doc_types = doc_types
 
     print_stats(data)
     with open(DATA_OBJ_FILE, 'w') as handle:

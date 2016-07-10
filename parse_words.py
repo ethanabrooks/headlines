@@ -9,7 +9,7 @@ from collections import defaultdict, namedtuple
 
 import shutil
 
-os.environ["THEANO_FLAGS"] = "device=gpu"
+os.environ["THEANO_FLAGS"] = "device=cpu"
 
 PAD = '<PAD>'
 GO = '<GO>'
@@ -23,7 +23,8 @@ def get_bucket_idx(length):
 
 """ namedtuples """
 
-Instance = namedtuple("instance", "article title")
+doc_types = "article title"
+Instance = namedtuple("instance", doc_types)
 Datasets = namedtuple("datasets", "train test")
 ConfusionMatrix = namedtuple("confusion_matrix", "f1 precision recall")
 Score = namedtuple("score", "value epoch")
@@ -116,7 +117,8 @@ if __name__ == '__main__':
                         help='number of instances to use in Jeopardy dataset')
     parser.add_argument('--size_vocab', type=int, default=10000,
                         help='number of words in vocab')
-    parser.add_argument('--data_dir', type=str, default='/data2/jsedoc/fb_headline_first_sent/',
+    parser.add_argument('--data_dir', type=str,
+                        default='/data2/jsedoc/fb_headline_first_sent/',
                         help='path to data')
     parser.add_argument('--bucket_factor', type=int, default=2,
                         help='factor by which to multiply exponent when determining bucket size')
@@ -152,6 +154,7 @@ if __name__ == '__main__':
         buckets = fill_buckets(instances)
         save_buckets(data.num_train, buckets, set_name)
 
+    data.doc_types = doc_types
     print_stats(data)
     with open(DATA_OBJ_FILE, 'w') as handle:
         pickle.dump(data, handle)
