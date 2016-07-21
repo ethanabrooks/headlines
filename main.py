@@ -125,19 +125,31 @@ def print_progress(epoch, instances_processed, num_instances, loss, start_time, 
     sys.stdout.flush()
 
 
-def translate(array, from_int, sep, pad):
+def translate(from_int, sep, pad, array):
     return sep.join((from_int[i] for i in array if from_int[i] != pad))
 
 
-def write_predictions_to_file(from_int, pad, sep, dataset_name, targets, predictions):
-    filename = 'current.{0}.txt'.format(dataset_name)
-    filepath = os.path.join(folder, filename)
-    with open(filepath, 'w') as handle:
-        for prediction_array, target_array in zip(predictions, targets):
-            for prediction, target in zip(prediction_array, target_array):
-                for label, arr in (('p: ', prediction), ('t: ', target)):
-                    values = translate(arr.ravel(), from_int, sep, pad)
-                    handle.write(label + values + '\n')
+def write_predictions_to_file(from_int, pad, sep, targets, predictions):
+    def get_path(fname):
+        return os.path.join(folder, fname)
+    # filename = 'current.{0}.txt'.format(dataset_name)
+    # filepath = os.path.join(folder, filename)
+    pred_path, tgt_path = map(get_path, ['predictions', 'targets'])
+    for array, path in zip([predictions, targets], [pred_path, tgt_path]):
+        newlines = np.chararray((array.shape[0], 1))
+        newlines[:] = '\n'
+        vec_translate = np.vectorize(partial(translate, from_int, sep, pad))
+        string_array = np.c_[vec_translate(array), newlines]
+        string = ''.join(string_array)
+        with open(path, 'wb') as handle:
+            handle.write(string)
+
+        # for prediction_array, target_array in zip(predictions, targets):
+        #     for prediction, target in zip(prediction_array, target_array):
+        #
+        #         for label, arr in (('p: ', prediction), ('t: ', target)):
+        #             values = translate(arr.ravel(), from_int, sep, pad)
+        #             handle.write(label + values + '\n')
 
 
 def evaluate(predictions, targets):
@@ -241,10 +253,7 @@ if __name__ == '__main__':
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()
                             print('')
-                            sample_prediction = translate(bucket_predictions[0, :],
-                                                          data.from_int,
-                                                          data.SEP,
-                                                          data.PAD)
+                            sample_prediction = translate(data.from_int, data.SEP, data.PAD, bucket_predictions[0, :])
                             rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,
@@ -257,12 +266,7 @@ if __name__ == '__main__':
                     predictions.append(bucket_predictions)
                     targets.append(titles)
 
-                write_predictions_to_file(data.from_int,
-                                          data.PAD,
-                                          data.SEP,
-                                          set_name,
-                                          targets,
-                                          predictions)
+                write_predictions_to_file(data.from_int, data.PAD, data.SEP, targets, predictions)
             accuracy = evaluate(predictions, targets)
             track_scores(scores, accuracy, epoch, set_name)
             print_graphs(scores)
