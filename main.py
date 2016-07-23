@@ -129,27 +129,36 @@ def translate(from_int, sep, pad, array):
     return sep.join((from_int[i] for i in array if from_int[i] != pad))
 
 
-def write_predictions_to_file(from_int, pad, sep, targets, predictions):
+def write_predictions_to_file(from_int, pad, sep, arrays):
+    assert type(from_int) == dict
+    assert type(targets) == list
+    assert type(predictions) == list
+
     def get_path(fname):
         return os.path.join(folder, fname)
-    # filename = 'current.{0}.txt'.format(dataset_name)
-    # filepath = os.path.join(folder, filename)
-    pred_path, tgt_path = map(get_path, ['predictions', 'targets'])
-    for array, path in zip([predictions, targets], [pred_path, tgt_path]):
-        newlines = np.chararray((array.shape[0], 1))
-        newlines[:] = '\n'
-        vec_translate = np.vectorize(partial(translate, from_int, sep, pad))
-        string_array = np.c_[vec_translate(array), newlines]
-        string = ''.join(string_array)
-        with open(path, 'wb') as handle:
-            handle.write(string)
 
-        # for prediction_array, target_array in zip(predictions, targets):
-        #     for prediction, target in zip(prediction_array, target_array):
-        #
-        #         for label, arr in (('p: ', prediction), ('t: ', target)):
-        #             values = translate(arr.ravel(), from_int, sep, pad)
-        #             handle.write(label + values + '\n')
+    paths = map(get_path, ['targets.txt', 'predictions.txt'])
+    for array_list, path in zip(arrays, paths):
+        with open(path, 'w') as handle:
+            for array in array_list:
+                newlines = np.chararray((array.shape[0], 1))
+                newlines[:] = '\n'
+                vec_translate = np.vectorize(from_int.__getitem__)
+                translated = vec_translate(array)
+                string_array = np.c_[translated, newlines]
+                if path == os.path.join(folder, 'targets.txt'):
+                    string_array = string_array[:, 1:]  # remove <GO>
+                remove_pads = string_array[np.where(string_array != pad)]
+                string = sep.join(remove_pads.ravel()).replace(' \n ', '\n')
+                handle.write(string)
+    exit(0)  # TODO TODO TODO
+
+            # for prediction_array, target_array in zip(predictions, targets):
+            #     for prediction, target in zip(prediction_array, target_array):
+            #
+            #         for label, arr in (('p: ', prediction), ('t: ', target)):
+            #             values = translate(arr.ravel(), from_int, sep, pad)
+            #             handle.write(label + values + '\n')
 
 
 def evaluate(predictions, targets):
@@ -172,11 +181,13 @@ def track_scores(scores, accuracy, epoch, dataset_name):
     scores[dataset_name].append(Score(accuracy, epoch))
     best_score = max(scores[dataset_name], key=lambda score: score.value)
     table = [['accuracy: ', accuracy, best_score.value, best_score.epoch]]
+    headers = [dataset_name.upper(), "score", "best score", "best score epoch"]
+    print('\n\n' + tabulate(table, headers=headers))
     if accuracy >= best_score.value:
         command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
         subprocess.call(command.split())
-    headers = [dataset_name.upper(), "score", "best score", "best score epoch"]
-    print('\n\n' + tabulate(table, headers=headers))
+        return True
+    return False
 
 
 def print_graphs(scores):
@@ -214,8 +225,9 @@ if __name__ == '__main__':
                 1,  # window_size
                 s.memory_size,
                 s.n_memory_slots,
-                data.to_int[data.GO],
-                load_dir='main')
+                data.to_int[data.GO])
+
+                # load_dir='main') TODO TODO TODO TODO
     rnn.print_params()
 
     scores = {dataset_name: []
@@ -253,7 +265,7 @@ if __name__ == '__main__':
                         if sample_prediction is None or time.time() - tic > 10:
                             tic = time.time()
                             print('')
-                            sample_prediction = translate(data.from_int, data.SEP, data.PAD, bucket_predictions[0, :])
+                            sample_prediction = data.SEP.join([data.from_int[x] for x in bucket_predictions[0, :]])
                             rnn.save(folder)
                         print_progress(epoch,
                                        instances_processed,
@@ -266,7 +278,8 @@ if __name__ == '__main__':
                     predictions.append(bucket_predictions)
                     targets.append(titles)
 
-                write_predictions_to_file(data.from_int, data.PAD, data.SEP, targets, predictions)
             accuracy = evaluate(predictions, targets)
-            track_scores(scores, accuracy, epoch, set_name)
+            is_best_score = track_scores(scores, accuracy, epoch, set_name)
+            if is_best_score:
+                write_predictions_to_file(data.from_int, data.PAD, data.SEP, [targets, predictions])
             print_graphs(scores)

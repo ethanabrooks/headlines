@@ -80,30 +80,40 @@ def fill_buckets(instances):
     assert lengths[0] == lengths[1]
     buckets = defaultdict(list)
     for article, title in zip(*instances):
-        bucket_id = tuple(map(get_bucket_idx, [article.size, title.size]))
+        article_array, _ = article
+        title_array, _ = title
+        bucket_id = tuple(map(get_bucket_idx, [article_array.size, title_array.size]))
         buckets[bucket_id].append(Instance(article, title))
     return buckets
 
 
-def save_buckets(num_train, buckets, set_name):
+def save_buckets(num_train, buckets, set_name, data):
     print('\nNumber of buckets: ', len(buckets))
     for key in buckets:
         bucket = buckets[key]
         size_bucket = len(bucket)
 
         # we only keep buckets with more than 10 instances for optimization
-        if size_bucket < 10 or bucket[0].comp.size == 0 or bucket[0].simp.size == 1:
+
+        size_input = bucket[0].comp[0].size
+        size_target = bucket[0].simp[0].size
+        if size_bucket < 10 or size_input == 0 or size_target == 1:
             num_train -= size_bucket
         else:
             bucket_folder = os.path.join(set_name, '-'.join(map(str, key)))
             if not os.path.exists(bucket_folder):
                 os.mkdir(bucket_folder)
             print(key, size_bucket)
-            instance = Instance(*map(np.array, zip(*bucket)))
-            for doc_type in Instance._fields:
+            instances = zip(*bucket)
+            for array_text_list, doc_type in zip(instances, doc_types.split()):
                 filepath = os.path.join(bucket_folder, doc_type)
-                np.save(filepath, instance.__getattribute__(doc_type))
-
+                arrays, text = zip(*array_text_list)
+                np.save(filepath, np.array(arrays))
+                with open(filepath + '.txt', 'w') as handle:
+                    handle.write(''.join(text))
+                # for array in arrays:
+                #     print(filepath)
+                #     print(' '.join([data.from_int[x] for x in array]))
 
 def print_stats(data):
     print("\nsize of dictionary:", data.vocsize)
@@ -114,12 +124,13 @@ def print_stats(data):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_instances', type=int, default=2000000000,
+    parser.add_argument('--num_instances', type=int, default=20000000,
                         help='number of instances to use in Jeopardy dataset')
     parser.add_argument('--size_vocab', type=int, default=10000,
                         help='number of words in vocab')
-    parser.add_argument('--data_dir', type=str, default='.',
-                                                        # '/data2/jsedoc/fb_headline_first_sent/',
+    parser.add_argument('--data_dir', type=str,
+                        default='.',
+                        # default='/data2/jsedoc/Newsela'
                         help='path to data')
     parser.add_argument('--bucket_factor', type=int, default=2,
                         help='factor by which to multiply exponent when determining bucket size')
@@ -130,6 +141,8 @@ if __name__ == '__main__':
 
     with open(DATA_OBJ_FILE, 'rb') as handle:
         data = pickle.load(handle)
+
+
     print('Bucket allocation:')
     for set_name in Datasets._fields:
         # start fresh every time
@@ -138,25 +151,29 @@ if __name__ == '__main__':
         os.mkdir(set_name)
 
     instances = {'train': Instance([], []),
-                 'test': Instance([], [])}
+                 'test':  Instance([], [])}
+
     seed = random.randint(0, 100)
-    for doc_type in Instance._fields:
-        data_filename = '.'.join(['tune.8turkers.tok', doc_type])
-        random.seed(seed)  # ensures that the same sequence of random numbers is generated for simp and comp
-        with open(os.path.join(s.data_dir, data_filename)) as data_file:
-            for line in data_file:
-                random_random = random.random()
-                set_name = 'train' if random_random < .8 else 'test'
-                array = to_array(line, doc_type)
-                instance_arrays = instances[set_name].__getattribute__(doc_type)
-                instance_arrays.append(array)
-                if len(instance_arrays) == s.num_instances:
-                    break
+    for set_name in Datasets._fields:
+        for doc_type in Instance._fields:
+            if set_name == 'test':
+                data_path = 'tune.8turkers.tok.' + doc_type
+            else:
+                data_path = os.path.join(s.data_dir, 'newsela.train.' + doc_type + '.tok')
+            random.seed(seed)  # ensures that the same sequence of random numbers is generated for simp and comp
+            with open(data_path) as data_file:
+                for line in data_file:
+                    random_random = random.random()
+                    array = to_array(line, doc_type)
+                    instance_arrays = instances[set_name].__getattribute__(doc_type)
+                    instance_arrays.append((array, line))
+                    if len(instance_arrays) == s.num_instances:
+                        break
 
     for set_name in Datasets._fields:
         assert len(instances[set_name].comp) == len(instances[set_name].simp)
         buckets = fill_buckets(instances[set_name])
-        save_buckets(len(instances['train'].comp), buckets, set_name)
+        save_buckets(len(instances['train'].comp), buckets, set_name, data)
 
     def num(set_name):
         return len(instances[set_name].comp)
