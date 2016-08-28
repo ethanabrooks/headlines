@@ -129,8 +129,8 @@ if __name__ == '__main__':
     parser.add_argument('--size_vocab', type=int, default=10000,
                         help='number of words in vocab')
     parser.add_argument('--data_dir', type=str,
-                        default='.',
-                        # default='/data2/jsedoc/Newsela'
+                        # default='.',
+                        default='/data2/jsedoc/Newsela',
                         help='path to data')
     parser.add_argument('--bucket_factor', type=int, default=2,
                         help='factor by which to multiply exponent when determining bucket size')

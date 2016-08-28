@@ -11,6 +11,7 @@ from theano.compile.nanguardmode import NanGuardMode
 from theano.ifelse import ifelse
 from theano.printing import Print
 from lasagne import objectives
+from lasagne import init
 from lasagne.updates import norm_constraint, adadelta
 
 int32 = 'int32'
@@ -239,14 +240,10 @@ class Model(object):
         # loss and updates
         y_clip = T.clip(y, .01, .99)
         y_flatten = y_clip.dimshuffle(2, 1, 0).flatten(ndim=2).T
-        # y_flatten = Print('y_flatten', ['min'])(y_flatten)
         y_true = titles[:, 1:].ravel()  # [:, 1:] in order to omit <go>
         counts = T.extra_ops.bincount(y_true, assert_nonneg=True)
         weights = 1.0 / (counts[y_true] + 1) * T.neq(y_true, 0)
         losses = T.nnet.categorical_crossentropy(y_flatten, y_true)
-        # losses = T.switch(T.gt(losses, threshold),
-        #                   threshold + T.nnet.sigmoid(losses - threshold),
-        #                   losses)
         loss = objectives.aggregate(losses, weights, mode='sum')
         updates = adadelta(loss, self.params())
 
@@ -282,8 +279,8 @@ class Model(object):
 
     def print_params(self):
         for name, param in zip(self.names, self.params()):
-            mean = theano.function([], param.mean())()
-            print(name + ': ' + str(mean))
+            shape = theano.function([], param.shape)()
+            print(name + ': ' + str(shape))
 
 
 if __name__ == '__main__':

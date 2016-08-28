@@ -19,8 +19,8 @@ from tabulate import tabulate
 from pickle import dump, load
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--hidden_size', type=int, default=100, help='Hidden size')
-parser.add_argument('--memory_size', type=int, default=40, help='Memory size')
+parser.add_argument('--hidden_size', type=int, default=120, help='Hidden size')
+parser.add_argument('--memory_size', type=int, default=80, help='Memory size')
 parser.add_argument('--embedding_dim', type=int, default=100, help='Embedding size')
 parser.add_argument('--n_memory_slots', type=int, default=8, help='Memory slots')
 parser.add_argument('--n_epochs', type=int, default=1000, help='Num epochs')
@@ -151,14 +151,13 @@ def write_predictions_to_file(from_int, pad, sep, arrays):
                 remove_pads = string_array[np.where(string_array != pad)]
                 string = sep.join(remove_pads.ravel()).replace(' \n ', '\n')
                 handle.write(string)
-    exit(0)  # TODO TODO TODO
 
-            # for prediction_array, target_array in zip(predictions, targets):
-            #     for prediction, target in zip(prediction_array, target_array):
-            #
-            #         for label, arr in (('p: ', prediction), ('t: ', target)):
-            #             values = translate(arr.ravel(), from_int, sep, pad)
-            #             handle.write(label + values + '\n')
+    # for prediction_array, target_array in zip(predictions, targets):
+    #     for prediction, target in zip(prediction_array, target_array):
+    #
+    #         for label, arr in (('p: ', prediction), ('t: ', target)):
+    #             values = translate(arr.ravel(), from_int, sep, pad)
+    #             handle.write(label + values + '\n')
 
 
 def evaluate(predictions, targets):
@@ -183,11 +182,9 @@ def track_scores(scores, accuracy, epoch, dataset_name):
     table = [['accuracy: ', accuracy, best_score.value, best_score.epoch]]
     headers = [dataset_name.upper(), "score", "best score", "best score epoch"]
     print('\n\n' + tabulate(table, headers=headers))
-    if accuracy >= best_score.value:
-        command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
-        subprocess.call(command.split())
-        return True
-    return False
+    return accuracy >= best_score.value
+    # command = 'mv {0}/current.{1}.txt {0}/best.{1}.txt'.format(folder, dataset_name)
+    # subprocess.call(command.split())
 
 
 def print_graphs(scores):
@@ -225,9 +222,9 @@ if __name__ == '__main__':
                 1,  # window_size
                 s.memory_size,
                 s.n_memory_slots,
-                data.to_int[data.GO])
+                data.to_int[data.GO],
+                load_dir='main')
 
-                # load_dir='main') TODO TODO TODO TODO
     rnn.print_params()
 
     scores = {dataset_name: []
@@ -278,8 +275,8 @@ if __name__ == '__main__':
                     predictions.append(bucket_predictions)
                     targets.append(titles)
 
-            accuracy = evaluate(predictions, targets)
-            is_best_score = track_scores(scores, accuracy, epoch, set_name)
-            if is_best_score:
-                write_predictions_to_file(data.from_int, data.PAD, data.SEP, [targets, predictions])
-            print_graphs(scores)
+        accuracy = evaluate(predictions, targets)
+        is_best_score = track_scores(scores, accuracy, epoch, set_name)
+        if is_best_score:
+            write_predictions_to_file(data.from_int, data.PAD, data.SEP, [targets, predictions])
+        print_graphs(scores)
