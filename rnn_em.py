@@ -4,15 +4,13 @@ import os
 import pickle
 from functools import partial
 
-import numpy
+import numpy as np
 import theano
-from theano import tensor as T
-from theano.compile.nanguardmode import NanGuardMode
-from theano.ifelse import ifelse
-from theano.printing import Print
 from lasagne import objectives
-from lasagne import init
-from lasagne.updates import norm_constraint, adadelta
+from lasagne.layers import GRULayer, InputLayer, get_output, EmbeddingLayer
+from lasagne.updates import adadelta
+from theano import tensor as T
+from theano.printing import Print
 
 int32 = 'int32'
 
@@ -29,16 +27,8 @@ def cosine_dist(tensor, matrix):
 
 # noinspection PyPep8Naming
 class Model(object):
-    def __init__(self,
-                 hidden_size=100,
-                 nclasses=73,
-                 num_embeddings=11359,
-                 embedding_dim=100,
-                 window_size=1,  # TODO: do we want some kind of window?
-                 memory_size=40,
-                 n_memory_slots=8,
-                 go_code=1,
-                 load_dir=None):
+    def __init__(self, hidden_size=100, nclasses=73, num_embeddings=11359, embedding_dim=100, window_size=1,
+                 memory_size=40, n_memory_slots=8, go_code=1, depth=2, load_dir=None):
 
         articles, titles = T.imatrices('articles', 'titles')
         n_article_slots = int(n_memory_slots / 2)  # TODO derive this from an arg
@@ -49,7 +39,7 @@ class Model(object):
 
         randoms = {
             # attr: shape
-            'emb': (num_embeddings + 1, embedding_dim),
+            # 'emb': (num_embeddings + 1, embedding_dim),
             'M_a': (memory_size, n_article_slots),
             'M_t': (memory_size, n_title_slots),
             'w_a': (n_article_slots,),
@@ -80,15 +70,18 @@ class Model(object):
             'b': nclasses,
         }
 
+        for l in range(depth):
+            randoms['gru' + str(l)] = (1, embedding_dim)
+
         def random_shared(name):
             shape = randoms[name]
             return theano.shared(
-                0.2 * numpy.random.normal(size=shape).astype(theano.config.floatX),
+                0.2 * np.random.normal(size=shape).astype(theano.config.floatX),
                 name=name)
 
         def zeros_shared(name):
             shape = zeros[name]
-            return theano.shared(numpy.zeros(shape, dtype=theano.config.floatX), name=name)
+            return theano.shared(np.zeros(shape, dtype=theano.config.floatX), name=name)
 
         for key in randoms:
             # create an attribute with associated shape and random values
@@ -99,7 +92,7 @@ class Model(object):
             setattr(self, key, zeros_shared(key))
 
         self.names = randoms.keys() + zeros.keys()
-        self.names.remove('emb')  # no need to save or update embeddings
+        # self.names.remove('emb')  # no need to save or update embeddings
         scan_vars = 'h0 w_a M_a w_t M_t'.split()
 
         def repeat_for_each_instance(param):
@@ -119,10 +112,8 @@ class Model(object):
                        h_tm1,
                        w_a,
                        M_a,
-                       w_t=None,
-                       M_t=None,
-                       is_training=True,
-                       is_article=True):
+                       *args,
+                       **kwargs):
             """
             notes
             Headers from paper in all caps
@@ -132,14 +123,24 @@ class Model(object):
             :param h_tm1: h_{t-1} (hidden state)
             :param w_a: attention weights for article memory
             :param M_a: article memory
-            :param w_t: attention weights for titles memory
-            :param M_t: titles memory
-            :param is_training:
-            :param is_article: we use different parts of memory when working with a article
+            :param args: gru_weights, maybe w_t, maybe M_t
+                   gru_weights: weights with which to initialize GRULayer on each time step
+                   w_t: attention weights for titles memory
+                   M_t: titles memory
+            :param kwargs: is_training, is_article
+                   is_training:
+                   is_article: we use different parts of memory when working with a article
             :return: [y = model outputs,
                       i + 1 = increment index,
                       h w, M (see above)]
             """
+            is_training = kwargs['is_training']
+            is_article = kwargs['is_article']
+            gru_weights = args[:depth]
+            if len(args) > depth:
+                w_t = args[depth]
+                M_t = args[depth + 1]
+
             i_type = T.iscalar if is_article or is_training else T.ivector
             assert i.type == i_type
 
@@ -150,8 +151,20 @@ class Model(object):
             if is_article or is_training:
                 # get representation of word window
                 document = articles if is_article else titles  # [instances, bucket_width]
-                word_idxs = document[:, i]  # [instances, 1]
-            x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
+                word_idxs = document[:, i:i+1]  # [instances, 1]
+            # x_i = self.emb[word_idxs].flatten(ndim=2)  # [instances, embedding_dim]
+
+            input = InputLayer(shape=(None, 1),
+                               input_var=word_idxs)
+            embed = EmbeddingLayer(input, num_embeddings, embedding_dim)
+            gru = GRULayer(incoming=embed, num_units=embedding_dim, hid_init=self.gru0)
+            for weight in gru_weights:
+                gru = GRULayer(incoming=gru, num_units=embedding_dim,
+                               hid_init=weight)
+            x_i = get_output(gru).flatten(ndim=2)
+            x_i = Print('x_i')(x_i)  # [instances, embedding_dim]
+
+            gru_weights = []
 
             if is_article:
                 M_read = M_a  # [instances, memory_size, n_article_slots]
@@ -219,9 +232,12 @@ class Model(object):
             next_idxs = i + 1 if is_training or is_article else y_max
             return [y, y_max, next_idxs, h] + attention_and_memory
 
-        read_article = partial(recurrence, is_article=True)
+        read_article = partial(recurrence, is_training=True, is_article=True)
+        # for read_article, it actually doesn't matter whether is_training is true
+
         i0 = T.constant(0, dtype=int32, name='first_value_of_i')
-        outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a]
+        gru_weights = [eval('self.gru' + str(l)) for l in range(depth)]
+        outputs_info = [None, None, i0, self.h0, self.w_a, self.M_a] + gru_weights
 
         [_, _, _, h, w, M], _ = theano.scan(fn=read_article,
                                             outputs_info=outputs_info,
@@ -229,7 +245,7 @@ class Model(object):
                                             name='read_scan')
 
         produce_title = partial(recurrence, is_training=True, is_article=False)
-        outputs_info[3:] = [param[-1, :, :] for param in (h, w, M)]
+        outputs_info[3:6] = [param[-1, :, :] for param in (h, w, M)]
         outputs_info.extend([self.w_t, self.M_t])
         bucket_width = titles.shape[1] - 1  # subtract 1 because <go> is omitted in y_true
         [y, y_max, _, _, _, _, _, _], _ = theano.scan(fn=produce_title,
@@ -284,10 +300,11 @@ class Model(object):
 
 
 if __name__ == '__main__':
-    articles = numpy.load("npy/articles.npy")
-    titles = numpy.load("npy/titles.npy")
+    dir = "train/5-3/"
+    articles = np.load(dir + "article.npy")
+    titles = np.load(dir + "title.npy")
     rnn = Model()
-    rnn.load('main')
+    # rnn.load('main')
     rnn.print_params()
     for result in rnn.learn(articles, titles):
         pass

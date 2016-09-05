@@ -76,10 +76,6 @@ def unpickle(var_name, dir=''):
         return load(handle)
 
 
-def get_bucket_idx(length):
-    return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
-
-
 def get_batches(bucket):
     num_batches = bucket[0].shape[0] // s.batch_size + 1
     split = partial(np.array_split, indices_or_sections=num_batches)
@@ -215,15 +211,8 @@ if __name__ == '__main__':
     Instance = namedtuple("instance", data.doc_types)
 
     print('loading model...')
-    rnn = Model(s.hidden_size,
-                data.nclasses,
-                data.vocsize,  # num_embeddings
-                s.embedding_dim,  # embedding_dim
-                1,  # window_size
-                s.memory_size,
-                s.n_memory_slots,
-                data.to_int[data.GO],
-                load_dir='main')
+    rnn = Model(s.hidden_size, data.nclasses, data.vocsize, s.embedding_dim, 1, s.memory_size, s.n_memory_slots,
+                data.to_int[data.GO], load_dir='main')
 
     rnn.print_params()
 
