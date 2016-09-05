@@ -22,3 +22,9 @@ data.pkl
 test/
 train/
 pkls/
+backup/data.pkl
+backup/nohup.out
+backup/params.pkl
+backup/params_headlines.pkl
+newsela.train.comp.tok
+newsela.train.simp.tok
