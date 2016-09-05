@@ -67,6 +67,7 @@ class Model(object):
             loss = seq2seq.sequence_loss(predictions, title_inputs, weights)
             train_op = tf.train.AdadeltaOptimizer().minimize(loss)
 
+
             tf.initialize_all_variables().run()
             return sess.run(train_op, feed_dict)
 
@@ -100,7 +101,9 @@ if __name__ == '__main__':
     # rnn.load('main')
     # rnn.print_params()
     output = rnn.learn(articles1, titles1)
+    print('TEST')
     output = rnn.learn(articles2, titles2)
+    print('TEST')
     if type(output) == tuple or type(output) == list:
         for result in output:
             print('-' * 10)

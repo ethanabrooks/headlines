@@ -225,7 +225,6 @@ if __name__ == '__main__':
         sample_prediction = None
         instances_processed = 0
         for set_name in list(Datasets._fields):
-            # set_name = 'test'
             predictions, targets = [], []
             loss = None
             for bucket_dir in os.listdir(set_name):
@@ -260,7 +259,7 @@ if __name__ == '__main__':
                                        start_time,
                                        sample_prediction)
                     else:
-                        bucket_predictions = rnn.infer(articles, titles)
+                        bucket_predictions = rnn.predict(articles, titles)
                     predictions.append(bucket_predictions)
                     targets.append(titles)
 
