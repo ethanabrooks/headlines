@@ -15,14 +15,14 @@ def cosine_distance(memory, keys):
     broadcast_keys = tf.expand_dims(keys, dim=2)
 
     def norm(x):
-        return tf.sqrt(tf.reduce_sum(tf.nn.l2_normalize(x, dim=1),
-                                     reduction_indices=1))
+        return tf.sqrt(tf.reduce_sum(tf.square(x), reduction_indices=1, keep_dims=True))
 
     norms = map(norm, [memory, broadcast_keys])  # [instances, n_memory_slots]
-    dot_prod = tf.squeeze(tf.batch_matmul(broadcast_keys,
+    dot_product = tf.squeeze(tf.batch_matmul(broadcast_keys,
                                           memory,
                                           adj_x=True))  # [instances, n_memory_slots]
-    return dot_prod / tf.nn.softplus(tf.mul(*norms))
+    norms_product = tf.squeeze(tf.nn.softplus(tf.mul(*norms)))
+    return dot_product / norms_product
 
 
 def gather(tensor, indices, axis=2, ndim=3):
@@ -129,13 +129,6 @@ class EMCell(RNNCell):
         :return:
         """
 
-        # batch_size = 3
-        # dim = 1
-        # articles1 = np.random.r(batch_size * dim, dtype='int32') \
-        #     .reshape(batch_size, seq_len1)  # np.load(dir + "article.npy")
-        # with tf.Session() as sess:
-        #     print(sess.run(M, feed_dict={inputs: articles1}))
-
         M = tf.reshape(M, (-1, self.memory_size, self.n_memory_slots))
         # [instances, memory_size, n_memory_slots]
 
@@ -167,8 +160,7 @@ class EMCell(RNNCell):
         # [instances, 1]
 
         # eqn 12
-        distance = cosine_distance(M, k)
-        w_hat = tf.nn.softmax(beta * distance)
+        w_hat = tf.nn.softmax(beta * cosine_distance(M, k))
         # [instances, n_memory_slots]
 
         # eqn 14
@@ -233,8 +225,7 @@ class EMCell(RNNCell):
         M_title = gather(M_title, indices=title_idxs, axis=2, ndim=3)
 
         # join updated with non-updated subtensors in M
-        # M = tf.concat(concat_dim=2, values=[M_article, M_title])
-        return y, (beta, distance, w_hat)
+        M = tf.concat(concat_dim=2, values=[M_article, M_title])
         return y, (gru_state, h_t, w_t, M)
 
 

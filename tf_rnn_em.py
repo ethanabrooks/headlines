@@ -88,8 +88,8 @@ class Model(object):
 if __name__ == '__main__':
     dir = "train/5-3/"
     batch_size = 3
-    seq_len1 = 1
-    seq_len2 = 2
+    seq_len1 = 8
+    seq_len2 = 9
     hidden_size = 2
     embedding_dim = 5
     memory_size = 7
