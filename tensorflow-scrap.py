@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from em_cell import EMCell
 from functools import partial
 
@@ -8,68 +10,79 @@ from tensorflow.python.ops.rnn_cell import GRUCell, RNNCell
 
 
 class Model(object):
-    def __init__(self, **kwargs):
-        self.embedding_dim = None
-        self.articles = None
-        self.titles = None
-
+    def __init__(self, session, articles, titles, **kwargs):
+        self.session = session
         self.__dict__.update(kwargs)
-        self.num_embeddings = n_classes
-        self.cell = EMCell(**kwargs)
+
+        # TODO
+        self.is_testing = True
         self.learn = partial(self.infer, is_testing=False)
         self.predict = partial(self.infer, is_testing=True)
+
+        self.bucket_sizes = sorted([(article.shape[1], title.shape[1])
+                                    for (article, title) in zip(articles, titles)],
+                                   key=lambda size: size[0])
+
+        max_sizes = [self.bucket_sizes[-1][0],
+                     max(self.bucket_sizes, key=lambda size: size[1])[1]]
+
+        def collect_input(from_encoder, name, add_one=False, dtype=tf.int32):
+            return [tf.placeholder(dtype, shape=[None], name=name + str(i))
+                    for i in xrange(max_sizes[from_encoder] + add_one)]
+
+        # Feeds for inputs.
+        self.encoder_inputs = collect_input(from_encoder=True, name='encoder')
+        self.decoder_inputs = collect_input(from_encoder=False, name='decoder', add_one=True)
+        self.target_weights = collect_input(from_encoder=False, name='weight',
+                                            dtype=tf.float32, add_one=True)
+
+        # Our targets are decoder inputs shifted by one.
+        targets = self.decoder_inputs[1:]
+
+        def seq2seq_function(encoder_input, decoder_input):
+            return seq2seq.embedding_rnn_seq2seq(
+                encoder_input, decoder_input, EMCell(**kwargs),
+                self.n_classes, self.n_classes, self.embedding_dim,
+                feed_previous=self.is_testing)
+
+        self.outputs, losses = seq2seq.model_with_buckets(
+            self.encoder_inputs, self.decoder_inputs[:-1], targets,
+            self.target_weights, self.bucket_sizes, seq2seq_function
+        )
+        self.train_ops = map(tf.train.AdadeltaOptimizer().minimize, losses)
+
+        tf.initialize_all_variables().run()
 
     def infer(self, articles, titles, is_testing):
         assert (articles.shape[0] == titles.shape[0])
 
-        with tf.Session() as sess, tf.variable_scope('learn') as scope:
-            # article_tensors, title_tensors = zip([(tf.placeholder(tf.float32, tensor.shape)
-            #                                        for tensor in tensors)
-            #                                       for tensors in zip(articles, titles)])
+        def slack(i):
+            sizes = self.bucket_sizes[i]
+            return sizes[0] - articles.shape[1] + sizes[1] - titles.shape[1]
 
-            # buckets = [(5, 5)]  # TODO
+        ids_of_buckets_that_fit = filter(lambda i: slack(i) >= 0,
+                                         range(len(self.bucket_sizes)))
+        bucket_id = min(ids_of_buckets_that_fit, key=slack)
 
-            # check if we are on an old batch
-            try:
-                assert (self.articles._shape == articles.shape)
-                assert (self.titles._shape == titles.shape)
+        encoder_size, decoder_size = self.bucket_sizes[bucket_id]
+        target_weights = titles[:, 1:] != 0
+        target_weights = np.c_[target_weights, np.zeros(titles.shape[0])]
 
-            # if not, allocate new placeholders
-            except (AssertionError, AttributeError):
-                self.articles = tf.placeholder(tf.int32, articles.shape)
-                self.titles = tf.placeholder(tf.int32, titles.shape)
+        # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
+        input_feed = {}
+        for src, dest in [(articles, self.encoder_inputs),
+                          (titles, self.decoder_inputs),
+                          (target_weights, self.target_weights)]:
+            for l in xrange(src.shape[1]):
+                input_feed[dest[l].name] = src[:, l]
 
-            feed_dict = {self.articles: articles,
-                         self.titles: titles}
+        # Since our targets are decoder inputs shifted by one, we need one more.
+        last_target = self.decoder_inputs[decoder_size].name
+        input_feed[last_target] = np.zeros([titles.shape[0]], dtype=np.int32)
 
-            article_inputs, title_inputs = map(partial(tf.unpack, axis=1),
-                                               feed_dict.keys())
-
-            def seq2seq_function():
-                return seq2seq.embedding_rnn_seq2seq(
-                    article_inputs, title_inputs, self.cell,
-                    self.num_embeddings, self.num_embeddings, self.embedding_dim,
-                    feed_previous=is_testing)
-
-            # first call to the function: create the GRU state for the first time
-            try:
-                predictions, _ = seq2seq_function()
-
-            # afterwards, we reuse the previously created state
-            except ValueError:
-                scope.reuse_variables()
-                predictions, _ = seq2seq_function()
-
-            weights = [tf.select(tf.equal(title, 0),
-                                 tf.zeros_like(title, dtype=tf.float32),
-                                 tf.ones_like(title, dtype=tf.float32))
-                       for title in title_inputs]
-            loss = seq2seq.sequence_loss(predictions, title_inputs, weights)
-            train_op = tf.train.AdadeltaOptimizer().minimize(loss)
-
-
-            tf.initialize_all_variables().run()
-            return sess.run(train_op, feed_dict)
+        output_feed = [self.outputs[bucket_id], self.train_ops[bucket_id]]
+        outputs, _ = sess.run(output_feed, input_feed)
+        return outputs
 
 
 if __name__ == '__main__':
@@ -86,36 +99,37 @@ if __name__ == '__main__':
         .reshape(batch_size, seq_len1)  # np.load(dir + "article.npy")
     titles1 = np.arange(batch_size * seq_len1, dtype='int32') \
         .reshape(batch_size, seq_len1)  # np.load(dir + "title.npy")
-    articles2 = np.arange(batch_size * seq_len2, dtype='int32')\
+    articles2 = np.arange(batch_size * seq_len2, dtype='int32') \
         .reshape(batch_size, seq_len2)  # np.load(dir + "article.npy")
-    titles2 = np.arange(batch_size * seq_len2, dtype='int32')\
+    titles2 = np.arange(batch_size * seq_len2, dtype='int32') \
         .reshape(batch_size, seq_len2)  # np.load(dir + "title.npy")
-    rnn = Model(go_code=1,
-                depth=1,
-                batch_size=batch_size,
-                embedding_dim=embedding_dim,
-                hidden_size=hidden_size,
-                memory_size=memory_size,
-                n_memory_slots=n_memory_slots,
-                n_classes=n_classes)
-    # rnn.load('main')
-    # rnn.print_params()
-    output = rnn.learn(articles1, titles1)
-    print('TEST')
-    output = rnn.learn(articles2, titles2)
-    print('TEST')
-    if type(output) == tuple or type(output) == list:
-        for result in output:
+
+    with tf.Session() as sess, tf.variable_scope('learn') as scope:
+        rnn = Model(sess, [articles1, articles2], [titles1, titles2],
+                    go_code=1,
+                    depth=1,
+                    batch_size=batch_size,
+                    embedding_dim=embedding_dim,
+                    hidden_size=hidden_size,
+                    memory_size=memory_size,
+                    n_memory_slots=n_memory_slots,
+                    n_classes=n_classes)
+        # rnn.load('main')
+        # rnn.print_params()
+        output = rnn.learn(articles1, titles1)
+        output = rnn.learn(articles2, titles2)
+        if type(output) == tuple or type(output) == list:
+            for result in output:
+                print('-' * 10)
+                print(result)
+            try:
+                print(result.shape)
+            except AttributeError:
+                pass
+        else:
             print('-' * 10)
-            print(result)
-        try:
-            print(result.shape)
-        except AttributeError:
-            pass
-    else:
-        print('-' * 10)
-        print(output)
-        try:
-            print(output.shape)
-        except AttributeError:
-            pass
+            print(output)
+            try:
+                print(output.shape)
+            except AttributeError:
+                pass
