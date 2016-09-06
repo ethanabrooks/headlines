@@ -22,8 +22,7 @@ def cosine_distance(memory, keys):
     dot_prod = tf.squeeze(tf.batch_matmul(broadcast_keys,
                                           memory,
                                           adj_x=True))  # [instances, n_memory_slots]
-    softplus = tf.nn.softplus(tf.mul(*norms))
-    return dot_prod, softplus, dot_prod / softplus
+    return dot_prod / tf.nn.softplus(tf.mul(*norms))
 
 
 def gather(tensor, indices, axis=2, ndim=3):
@@ -168,7 +167,7 @@ class EMCell(RNNCell):
         # [instances, 1]
 
         # eqn 12
-        dot_prod, softplus, distance = cosine_distance(M, k)
+        distance = cosine_distance(M, k)
         w_hat = tf.nn.softmax(beta * distance)
         # [instances, n_memory_slots]
 
@@ -235,7 +234,7 @@ class EMCell(RNNCell):
 
         # join updated with non-updated subtensors in M
         # M = tf.concat(concat_dim=2, values=[M_article, M_title])
-        return y, (beta, k, M, distance, w_hat)
+        return y, (beta, distance, w_hat)
         return y, (gru_state, h_t, w_t, M)
 
 
