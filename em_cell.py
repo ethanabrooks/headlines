@@ -22,7 +22,8 @@ def cosine_distance(memory, keys):
     dot_prod = tf.squeeze(tf.batch_matmul(broadcast_keys,
                                           memory,
                                           adj_x=True))  # [instances, n_memory_slots]
-    return dot_prod / tf.mul(*norms)
+    softplus = tf.nn.softplus(tf.mul(*norms))
+    return dot_prod, softplus, dot_prod / softplus
 
 
 def gather(tensor, indices, axis=2, ndim=3):
@@ -48,10 +49,6 @@ class EMCell(RNNCell):
         randoms = {
             # attr: shape
             # 'emb': (num_embeddings + 1, embedding_dim),
-            'gru_state': (batch_size, embedding_dim),
-            'h': (batch_size, hidden_size),
-            'M': (batch_size, n_memory_slots * memory_size),
-            'a': (batch_size, n_memory_slots),
             'Wg': (embedding_dim, n_memory_slots),
             'Wk': (hidden_size, memory_size),
             'Wb': (hidden_size, 1),
@@ -64,6 +61,10 @@ class EMCell(RNNCell):
 
         zeros = {
             # attr: shape
+            'gru_state': (batch_size, embedding_dim),
+            'h': (batch_size, hidden_size),
+            'M': (batch_size, n_memory_slots * memory_size),
+            'a': (batch_size, n_memory_slots),
             'bg': n_memory_slots,
             'bk': memory_size,
             'bb': 1,
@@ -114,8 +115,6 @@ class EMCell(RNNCell):
 
     @property
     def output_size(self):
-        # return batch_size, embedding_dim
-        # return self.gru.output_size
         return self.output_size
 
     @property
@@ -124,20 +123,26 @@ class EMCell(RNNCell):
                 self.hidden_size,
                 self.n_memory_slots,
                 self.n_memory_slots * self.memory_size)
-        # return self.gru.state_size
 
     def __call__(self, inputs, (gru_state, h_tm1, w_tm1, M), name=None):
         """
         :param inputs: [batch_size, hidden_size]
         :return:
         """
+
+        # batch_size = 3
+        # dim = 1
+        # articles1 = np.random.r(batch_size * dim, dtype='int32') \
+        #     .reshape(batch_size, seq_len1)  # np.load(dir + "article.npy")
+        # with tf.Session() as sess:
+        #     print(sess.run(M, feed_dict={inputs: articles1}))
+
         M = tf.reshape(M, (-1, self.memory_size, self.n_memory_slots))
         # [instances, memory_size, n_memory_slots]
 
         self.is_article = tf.cond(
             # if the first column of inputs is the go code
-            tf.equal(tf.gather_nd(inputs, [0, 0]),  # first column of inputs
-                     self.go_code),
+            tf.equal(inputs[0, 0], self.go_code),
             lambda: tf.logical_not(self.is_article),  # flip the value of self.is_article
             lambda: self.is_article  # otherwise leave it alone
         )
@@ -163,7 +168,8 @@ class EMCell(RNNCell):
         # [instances, 1]
 
         # eqn 12
-        w_hat = tf.nn.softmax(beta * cosine_distance(M, k))
+        dot_prod, softplus, distance = cosine_distance(M, k)
+        w_hat = tf.nn.softmax(beta * distance)
         # [instances, n_memory_slots]
 
         # eqn 14
@@ -194,26 +200,6 @@ class EMCell(RNNCell):
 
         f = w_t * e
         # [instances, n_memory_slots]
-
-        '''
-        # actual indices that we can write to
-        write_idxs = tf.cond(self.is_article,
-                             lambda: tf.range(0, n_article_slots),
-                             lambda: tf.range(n_article_slots, self.n_memory_slots))
-
-        f = tf.transpose(tf.gather(tf.transpose(f), write_idxs))  # forget vector
-        f = gather_along_axis(f, write_idxs, axis=1, ndim=2)
-        # [instances, n_write_slots]
-
-        def f_pad(n_before_write, n_after_write):
-           return tf.constant([[0, 0], [n_before_write, n_after_write]])
-
-        # pads f with zeros; corresponding indices in memory will not be overwritten
-        f = tf.pad(f, tf.cond(self.is_article,
-                              lambda: f_pad(0, self.n_memory_slots - n_article_slots),
-                              lambda: f_pad(n_article_slots, 0)))
-        # [instances, n_memory_slots]
-        '''
 
         # eqn 16
         v = tf.nn.tanh(tf.matmul(h_t, self.Wv) + self.bv)
@@ -248,7 +234,8 @@ class EMCell(RNNCell):
         M_title = gather(M_title, indices=title_idxs, axis=2, ndim=3)
 
         # join updated with non-updated subtensors in M
-        M = tf.concat(concat_dim=2, values=[M_article, M_title])
+        # M = tf.concat(concat_dim=2, values=[M_article, M_title])
+        return y, (beta, k, M, distance, w_hat)
         return y, (gru_state, h_t, w_t, M)
 
 
@@ -261,9 +248,8 @@ if __name__ == '__main__':
         memory_size = 3
         n_memory_slots = 4
 
-        x = tf.constant(np.arange(batch_size * hidden_size)
-                        .reshape(batch_size, hidden_size),
-                        dtype=tf.float32)
+        x = tf.constant(np.random.uniform(high=batch_size * hidden_size,
+                        size=(batch_size, hidden_size)) * np.sqrt(3), dtype=tf.float32)
 
         cell = EMCell(go_code=1,
                       depth=1,

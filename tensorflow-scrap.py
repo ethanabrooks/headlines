@@ -10,31 +10,24 @@ from tensorflow.python.ops.rnn_cell import GRUCell, RNNCell
 
 
 class Model(object):
-    def __init__(self, session, articles, titles, **kwargs):
+    def __init__(self, session, bucket_sizes, save_dir, testing, **kwargs):
         self.session = session
+        self.testing = testing  # TODO
+        self.bucket_sizes = bucket_sizes
         self.__dict__.update(kwargs)
-
-        # TODO
-        self.is_testing = True
-        self.learn = partial(self.infer, is_testing=False)
-        self.predict = partial(self.infer, is_testing=True)
-
-        self.bucket_sizes = sorted([(article.shape[1], title.shape[1])
-                                    for (article, title) in zip(articles, titles)],
-                                   key=lambda size: size[0])
 
         max_sizes = [self.bucket_sizes[-1][0],
                      max(self.bucket_sizes, key=lambda size: size[1])[1]]
 
-        def collect_input(from_encoder, name, add_one=False, dtype=tf.int32):
+        def make_placeholders(from_encoder, name, extend=0, dtype=tf.int32):
             return [tf.placeholder(dtype, shape=[None], name=name + str(i))
-                    for i in xrange(max_sizes[from_encoder] + add_one)]
+                    for i in xrange(max_sizes[from_encoder] + extend)]
 
         # Feeds for inputs.
-        self.encoder_inputs = collect_input(from_encoder=True, name='encoder')
-        self.decoder_inputs = collect_input(from_encoder=False, name='decoder', add_one=True)
-        self.target_weights = collect_input(from_encoder=False, name='weight',
-                                            dtype=tf.float32, add_one=True)
+        self.encoder_inputs = make_placeholders(from_encoder=True, name='encoder')
+        self.decoder_inputs = make_placeholders(from_encoder=False, name='decoder', extend=1)
+        self.target_weights = make_placeholders(from_encoder=False, name='weight',
+                                                dtype=tf.float32, extend=1)
 
         # Our targets are decoder inputs shifted by one.
         targets = self.decoder_inputs[1:]
@@ -43,29 +36,36 @@ class Model(object):
             return seq2seq.embedding_rnn_seq2seq(
                 encoder_input, decoder_input, EMCell(**kwargs),
                 self.n_classes, self.n_classes, self.embedding_dim,
-                feed_previous=self.is_testing)
+                feed_previous=self.testing)
 
         self.outputs, losses = seq2seq.model_with_buckets(
             self.encoder_inputs, self.decoder_inputs[:-1], targets,
             self.target_weights, self.bucket_sizes, seq2seq_function
         )
         self.train_ops = map(tf.train.AdadeltaOptimizer().minimize, losses)
+        self.saver = tf.train.Saver(tf.all_variables())
 
-        tf.initialize_all_variables().run()
+        ckpt = tf.train.get_checkpoint_state(save_dir)
+        if ckpt and tf.gfile.Exists(ckpt.model_checkpoint_path):
+            print("Reading model parameters from %s" % ckpt.model_checkpoint_path)
+            self.saver.restore(session, ckpt.model_checkpoint_path)
+        else:
+            print("Created model with fresh parameters.")
+            session.run(tf.initialize_all_variables())
 
-    def infer(self, articles, titles, is_testing):
+    def infer(self, articles, titles, sess):
         assert (articles.shape[0] == titles.shape[0])
 
-        def slack(i):
-            sizes = self.bucket_sizes[i]
-            return sizes[0] - articles.shape[1] + sizes[1] - titles.shape[1]
+        def slack(i, j):
+            return self.bucket_sizes[i][j] - [articles, titles][j].shape[1]
 
-        ids_of_buckets_that_fit = filter(lambda i: slack(i) >= 0,
+        ids_of_buckets_that_fit = filter(lambda i: slack(i, 0) >= 0 and slack(i, 1) >= 0,
                                          range(len(self.bucket_sizes)))
-        bucket_id = min(ids_of_buckets_that_fit, key=slack)
+        bucket_id = min(ids_of_buckets_that_fit,
+                        key=lambda i: slack(i, 0) + slack(i, 1))
 
         encoder_size, decoder_size = self.bucket_sizes[bucket_id]
-        target_weights = titles[:, 1:] != 0
+        target_weights = titles[:, 1:] != 0  # TODO
         target_weights = np.c_[target_weights, np.zeros(titles.shape[0])]
 
         # Input feed: encoder inputs, decoder inputs, target_weights, as provided.
@@ -88,8 +88,8 @@ class Model(object):
 if __name__ == '__main__':
     dir = "train/5-3/"
     batch_size = 3
-    seq_len1 = 5
-    seq_len2 = 6
+    seq_len1 = 1
+    seq_len2 = 2
     hidden_size = 2
     embedding_dim = 5
     memory_size = 7
@@ -104,20 +104,22 @@ if __name__ == '__main__':
     titles2 = np.arange(batch_size * seq_len2, dtype='int32') \
         .reshape(batch_size, seq_len2)  # np.load(dir + "title.npy")
 
-    with tf.Session() as sess, tf.variable_scope('learn') as scope:
-        rnn = Model(sess, [articles1, articles2], [titles1, titles2],
-                    go_code=1,
-                    depth=1,
-                    batch_size=batch_size,
-                    embedding_dim=embedding_dim,
-                    hidden_size=hidden_size,
-                    memory_size=memory_size,
-                    n_memory_slots=n_memory_slots,
-                    n_classes=n_classes)
+    # list of (article length, title length) pairs TODO
+    bucket_sizes = [(article.shape[1], title.shape[1])
+                    for (article, title) in
+                    [(articles1, titles1), (articles2, titles2)]]
+    bucket_sizes.sort(key=lambda size: size[0])
+
+    with tf.Session() as session, tf.variable_scope('learn') as scope:
+
+        rnn = Model(session, bucket_sizes, save_dir='main', testing=False,
+                    go_code=1, depth=1, batch_size=batch_size,
+                    embedding_dim=embedding_dim, hidden_size=hidden_size, memory_size=memory_size,
+                    n_memory_slots=n_memory_slots, n_classes=n_classes)
         # rnn.load('main')
         # rnn.print_params()
-        output = rnn.learn(articles1, titles1)
-        output = rnn.learn(articles2, titles2)
+        # output = rnn.infer(articles1, titles1, session)
+        output = rnn.infer(articles2, titles2, session)
         if type(output) == tuple or type(output) == list:
             for result in output:
                 print('-' * 10)
