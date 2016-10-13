@@ -18,7 +18,7 @@ DATA_OBJ_FILE = 'data.pkl'
 
 
 def get_bucket_idx(length):
-    return int(np.math.ceil(np.math.log(length, s.bucket_factor)))
+    return s.bucket_factor ** int(np.math.ceil(np.math.log(length, s.bucket_factor)))
 
 
 """ namedtuples """
@@ -65,7 +65,7 @@ def to_array(string, doc_type):
     length = len(tokens)
     if not tokens:
         length += 1
-    size = s.bucket_factor ** get_bucket_idx(length)
+    size = get_bucket_idx(length)
     sentence_vector = np.zeros(size, dtype='int32') + data.to_int[PAD]
     for i, word in enumerate(tokens):
         if word not in data.to_int:

@@ -3,7 +3,7 @@ from functools import partial
 import tensorflow as tf
 import numpy as np
 from tensorflow.python.ops import seq2seq
-from tensorflow.python.ops.rnn_cell import GRUCell, RNNCell
+from tensorflow.python.ops.rnn_cell import GRUCell, RNNCell, MultiRNNCell
 
 
 def cosine_distance(memory, keys):
@@ -19,8 +19,8 @@ def cosine_distance(memory, keys):
 
     norms = map(norm, [memory, broadcast_keys])  # [instances, n_memory_slots]
     dot_product = tf.squeeze(tf.batch_matmul(broadcast_keys,
-                                          memory,
-                                          adj_x=True))  # [instances, n_memory_slots]
+                                             memory,
+                                             adj_x=True))  # [instances, n_memory_slots]
     norms_product = tf.squeeze(tf.nn.softplus(tf.mul(*norms)))
     return dot_product / norms_product
 
@@ -37,13 +37,11 @@ class EMCell(RNNCell):
     def __init__(self,
                  go_code,
                  depth,
-                 batch_size,
                  embedding_dim,
                  hidden_size,
                  memory_size,
                  n_memory_slots,
-                 n_classes,
-                 load_dir=None):
+                 n_classes):
 
         randoms = {
             # attr: shape
@@ -60,10 +58,6 @@ class EMCell(RNNCell):
 
         zeros = {
             # attr: shape
-            'gru_state': (batch_size, embedding_dim),
-            'h': (batch_size, hidden_size),
-            'M': (batch_size, n_memory_slots * memory_size),
-            'a': (batch_size, n_memory_slots),
             'bg': n_memory_slots,
             'bk': memory_size,
             'bb': 1,
@@ -78,21 +72,16 @@ class EMCell(RNNCell):
 
         def random_shared(name):
             shape = randoms[name]
-            return tf.Variable(
-                np.arange(np.prod(shape)).reshape(shape),
-                dtype=tf.float32,
-                name=name)
             # return tf.Variable(
-            #     0.2 * np.random.normal(size=shape),
+            #     np.arange(np.prod(shape)).reshape(shape),
             #     dtype=tf.float32,
             #     name=name)
+            return tf.Variable(0.2 * np.random.normal(size=shape),
+                               dtype=tf.float32, name=name)
 
         def zeros_shared(name):
             shape = zeros[name]
-            return tf.Variable(
-                0.2 * np.random.normal(size=shape),
-                dtype=tf.float32,
-                name=name)
+            return tf.Variable(np.zeros(shape), dtype=tf.float32, name=name)
 
         for key in randoms:
             # create an attribute with associated shape and random values
@@ -103,7 +92,8 @@ class EMCell(RNNCell):
             setattr(self, key, zeros_shared(key))
 
         self.names = randoms.keys() + zeros.keys()
-        self.gru = GRUCell(embedding_dim)
+        # self.gru = GRUCell(embedding_dim)
+        self.gru = MultiRNNCell([GRUCell(embedding_dim) for _ in range(depth)])
         self.is_article = tf.constant(True)
         self.go_code = go_code
 
@@ -111,6 +101,7 @@ class EMCell(RNNCell):
         self.n_classes = n_classes
         self.memory_size = memory_size
         self.n_memory_slots = n_memory_slots
+        self.i = 0
 
     @property
     def output_size(self):
@@ -226,12 +217,14 @@ class EMCell(RNNCell):
 
         # join updated with non-updated subtensors in M
         M = tf.concat(concat_dim=2, values=[M_article, M_title])
+
+        self.i += 1
+
         return y, (gru_state, h_t, w_t, M)
 
 
 if __name__ == '__main__':
-    with tf.Session() as sess:  # , tf.variable_scope("", reuse=True):
-        # dir = "train/5-3/"
+    with tf.Session() as sess:
         batch_size = 3
         hidden_size = 2
         embedding_dim = 5
@@ -239,17 +232,35 @@ if __name__ == '__main__':
         n_memory_slots = 4
 
         x = tf.constant(np.random.uniform(high=batch_size * hidden_size,
-                        size=(batch_size, hidden_size)) * np.sqrt(3), dtype=tf.float32)
+                                          size=(batch_size, hidden_size)) * np.sqrt(3), dtype=tf.float32)
 
         cell = EMCell(go_code=1,
                       depth=1,
-                      batch_size=batch_size,
                       n_classes=12,
                       embedding_dim=embedding_dim,
                       hidden_size=hidden_size,
                       memory_size=memory_size,
                       n_memory_slots=n_memory_slots)
-        output = cell(x, (cell.gru_state, cell.h, cell.a, cell.M))
+
+        state_shapes = {
+            'gru_state': (batch_size, embedding_dim),
+            'h': (batch_size, hidden_size),
+            'M': (batch_size, n_memory_slots * memory_size),
+            'a': (batch_size, n_memory_slots),
+        }
+
+        def zeros_shared(name):
+            shape = state_shapes[name]
+            return tf.Variable(
+                np.zeros(shape),
+                dtype=tf.float32,
+                name=name)
+
+        states = {name: zeros_shared(name) for name in state_shapes}
+        output = cell(x, (states['gru_state'],
+                          states['h'],
+                          states['a'],
+                          states['M']))
         tf.initialize_all_variables().run()
         result = sess.run(output)
 

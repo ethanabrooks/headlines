@@ -1,0 +1,15 @@
+{
+  "hidden_size": 120,
+  "memory_size": 80,
+  "embedding_dim": 100,
+  "n_memory_slots": 8,
+  "n_epochs": 1000, 
+  "depth": 1,
+  "seed": 345,
+  "batch_size": 20,
+  "learn_rate": 0.0627142536696559,
+  "save_vars": false,
+  "load_vars": false,
+  "save_dir": "main",
+  "plots": "plots"
+}
