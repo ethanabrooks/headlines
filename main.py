@@ -7,7 +7,7 @@ import random
 import subprocess
 import sys
 import time
-import traceback
+
 from collections import namedtuple
 from functools import partial
 import numpy as np
