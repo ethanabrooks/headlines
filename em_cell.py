@@ -76,12 +76,11 @@ class EMCell(RNNCell):
             #     np.arange(np.prod(shape)).reshape(shape),
             #     dtype=tf.float32,
             #     name=name)
-            return tf.Variable(0.2 * np.random.normal(size=shape),
-                               dtype=tf.float32, name=name)
+            return tf.Variable(0.2 * np.random.normal(size=shape), name=name)
 
         def zeros_shared(name):
             shape = zeros[name]
-            return tf.Variable(np.zeros(shape), dtype=tf.float32, name=name)
+            return tf.Variable(np.zeros(shape), name=name)
 
         for key in randoms:
             # create an attribute with associated shape and random values
