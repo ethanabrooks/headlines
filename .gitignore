@@ -28,3 +28,4 @@ backup/params.pkl
 backup/params_headlines.pkl
 newsela.train.comp.tok
 newsela.train.simp.tok
+.idea/
