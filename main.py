@@ -12,8 +12,6 @@ from collections import namedtuple
 from functools import partial
 import numpy as np
 import os
-from bokeh.io import output_file, vplot, save
-from bokeh.plotting import figure
 
 from tf_rnn_em import Model
 from tabulate import tabulate
@@ -175,25 +173,25 @@ def track_scores(scores, accuracy, epoch, dataset_name):
     # subprocess.call(command.split())
 
 
-def print_graphs(scores):
-    output_file(s.plots + ".html")
-    properties_per_dataset = {
-        'train': {'line_color': 'firebrick'},
-        'test': {'line_color': 'orange'},
-        'valid': {'line_color': 'olive'}
-    }
-
-    plots = []
-    plot = figure(width=500, plot_height=500, title='accuracy')
-    for dataset_name in scores:
-        accuracies = [score.value for score in scores[dataset_name]]
-        plot.line(range(len(accuracies)),
-                  accuracies,
-                  legend=dataset_name,
-                  **properties_per_dataset[dataset_name])
-    plots.append(plot)
-    p = vplot(*plots)
-    save(p)
+# def print_graphs(scores):
+#     output_file(s.plots + ".html")
+#     properties_per_dataset = {
+#         'train': {'line_color': 'firebrick'},
+#         'test': {'line_color': 'orange'},
+#         'valid': {'line_color': 'olive'}
+#     }
+#
+#     plots = []
+#     plot = figure(width=500, plot_height=500, title='accuracy')
+#     for dataset_name in scores:
+#         accuracies = [score.value for score in scores[dataset_name]]
+#         plot.line(range(len(accuracies)),
+#                   accuracies,
+#                   legend=dataset_name,
+#                   **properties_per_dataset[dataset_name])
+#     plots.append(plot)
+#     p = vplot(*plots)
+#     save(p)
 
 if __name__ == '__main__':
     np.random.seed(s.seed)
@@ -274,4 +272,3 @@ if __name__ == '__main__':
             is_best_score = track_scores(scores, accuracy, epoch, set_name)
             if is_best_score:
                 write_predictions_to_file(data.from_int, data.PAD, data.SEP, [targets, predictions])
-            print_graphs(scores)
