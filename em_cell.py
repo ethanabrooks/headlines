@@ -129,7 +129,7 @@ class EMCell(RNNCell):
             lambda: self.is_article  # otherwise leave it alone
         )
 
-        gru_outputs, gru_state = self.gru(inputs, gru_state)
+        gru_outputs, gru_state = self.gr(inputs, gru_state)
         # [batch_size, embedding_dim]
 
         # eqn 15
@@ -252,7 +252,6 @@ if __name__ == '__main__':
             shape = state_shapes[name]
             return tf.Variable(
                 np.zeros(shape),
-                dtype=tf.float32,
                 name=name)
 
         states = {name: zeros_shared(name) for name in state_shapes}
