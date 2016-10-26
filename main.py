@@ -220,7 +220,7 @@ if __name__ == '__main__':
                 bucket_sizes = map(get_bucket_sizes, bucket_dirs)
                 bucket_sizes.sort(key=lambda bucket: bucket[0])
                 rnn = Model(sess, bucket_sizes, save_dir=s.save_dir,
-                            testing=set_name == 'test',
+                            test_mode=set_name == 'test',
                             go_code=data.to_int[data.GO],
                             depth=s.depth,
                             embedding_dim=s.embedding_dim, hidden_size=s.hidden_size,
